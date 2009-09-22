@@ -355,16 +355,18 @@ class Monitor:
         except:
             return False
 
-    def build_iface_stat(self, iface):
-        """Builds graphical view for interface"""
-        iface_hbox = gtk.HBox()
+    def show_statistics_dialog(self, widget, iface):
+        """Shows statistics dialog"""
+        dialog = gtk.Dialog(_("Network statistics for %s") % iface,
+                self.window, 0,
+                (gtk.STOCK_OK, gtk.RESPONSE_OK)
+                )
         # statistics vbox
-        stats_vbox = gtk.VBox()
-        iface_hbox.add(stats_vbox)
+        stats_vbox = dialog.vbox
         if self.check_network_accounting(iface):
             # graph
             graph_vnstat = gtk.Image()
-            pixbuf = self.load_graph_from_vnstat(iface, type="daily")
+            pixbuf = self.load_graph_from_vnstat(iface, type="summary")
             graph_vnstat.set_from_pixbuf(pixbuf)
             stats_vbox.pack_start(graph_vnstat)
             # buttons
@@ -395,9 +397,23 @@ class Monitor:
         else:
             label = gtk.Label(_("Network accounting was not enabled on interface %s.\nPlease enable network accounting on the interface in order to view traffic statistics."))
             stats_vbox.add(label)
-        # instant data vbox
+
+        stats_vbox.show_all()
+        ret = dialog.run()
+        dialog.destroy()
+
+    def build_iface_stat(self, iface):
+        """Builds graphical view for interface"""
         traf_vbox = gtk.VBox()
-        iface_hbox.add(traf_vbox)
+        # graph
+        draw = gtk.DrawingArea()
+        traf_vbox.pack_start(draw)
+        histogram = {"in": [], "out": []}
+        graph = LoadGraph(draw, histogram, HISTOGRAM_SIZE)
+        draw.connect('expose_event', graph.on_expose)
+        self.ifaces[iface]['graph'] = graph
+        self.ifaces[iface]['histogram'] = histogram
+
         frame = gtk.Frame(_("Interface statistics"))
         traf_vbox.pack_start(frame)
         vbox = gtk.VBox()
@@ -425,16 +441,16 @@ class Monitor:
         self.ifaces[iface]["widget_speed_out"] = speed_out
         vbox.pack_start(speed_out_h, False, False)
 
-        # graph
-        draw = gtk.DrawingArea()
-        vbox.pack_start(draw)
-        histogram = {"in": [], "out": []}
-        graph = LoadGraph(draw, histogram, HISTOGRAM_SIZE)
-        draw.connect('expose_event', graph.on_expose)
-        self.ifaces[iface]['graph'] = graph
-        self.ifaces[iface]['histogram'] = histogram
+        # statistics button
+        if self.check_network_accounting(iface):
+            button = gtk.Button(_("Show detailed network statistics"))
+            button.connect('clicked', self.show_statistics_dialog, iface)
+            traf_vbox.pack_start(button, False, False)
+        else:
+            label = gtk.Label("\n".join(textwrap.wrap(_("Network accounting is not enabled for this interface. Please enable it in Mandriva network center in order to view detailed traffic statistics"))))
+            traf_vbox.pack_start(label, False, False)
 
-        return iface_hbox
+        return traf_vbox
 
     def build_value_pair(self, sizegroup, text, value_text=None):
         """Builds a value pair"""
