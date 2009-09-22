@@ -206,8 +206,8 @@ class LoadGraph:
         if val == 0 and self.maxval != 0:
             val = self.maxval
 
-        self.__str_max = "%d %s" % (val, _("KB"))
-        self.__str_mid = "%d %s" % (val/2, _("KB"))
+        self.__str_max = "%d %s" % (val, _("Bytes"))
+        self.__str_mid = "%d %s" % (val/2, _("Bytes"))
         LoadGraph.padding["left"] = self.__context.text_extents(self.__str_max)[2] + 10
 
     def __on_size(self, rect):
