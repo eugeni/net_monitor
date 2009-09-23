@@ -272,7 +272,10 @@ class Monitor:
         self.ifaces = readnet()
         self.enabled_ifaces = []
 
-        for iface in self.ifaces:
+        sorted_ifaces = self.ifaces.keys()
+        sorted_ifaces.sort()
+
+        for iface in sorted_ifaces:
             data_in, data_out = get_traffic(iface)
             self.ifaces[iface] = {'data_in': 0,
                               'data_out': 0,
