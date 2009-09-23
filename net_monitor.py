@@ -60,7 +60,7 @@ class LoadGraph:
     bandwidth load.
     """
     # we don't want to allow the window to shrink below this height
-    min_height = 70 
+    min_height = 70
     padding = { "left" : 50, "right" : 10, "top" : 10, "bottom" : 10 }
     colors  = ( "bg", "bg_outer", "in", "out" )
 
@@ -115,7 +115,7 @@ class LoadGraph:
         self.__context.stroke()
 
         # stroke the inner rectangle
-        self.__context.rectangle(self.__inner.x, 
+        self.__context.rectangle(self.__inner.x,
                                  self.__inner.y,
                                  self.__inner.width,
                                  self.__inner.height)
@@ -124,10 +124,10 @@ class LoadGraph:
         self.__context.stroke()
 
         # stroke the quad around
-        self.__context.move_to(self.__inner.x, self.__inner.y + self.__inner.height) 
-        self.__context.line_to(self.__inner.x, self.__inner.y)                     
-        self.__context.line_to(self.__inner.x + self.__inner.width - self.__mesh_x, self.__inner.y) 
-        self.__context.line_to(self.__inner.x + self.__inner.width - self.__mesh_x, self.__inner.y + self.__inner.height) 
+        self.__context.move_to(self.__inner.x, self.__inner.y + self.__inner.height)
+        self.__context.line_to(self.__inner.x, self.__inner.y)
+        self.__context.line_to(self.__inner.x + self.__inner.width - self.__mesh_x, self.__inner.y)
+        self.__context.line_to(self.__inner.x + self.__inner.width - self.__mesh_x, self.__inner.y + self.__inner.height)
         self.__set_context_color(self.__context, (255, 255, 255))
         self.__context.stroke()
 
@@ -141,7 +141,7 @@ class LoadGraph:
         self.__draw_num(self.__inner.y, self.__str_max, (255, 255, 255))
 
     def __draw_num(self, ypos, num, color):
-        """ 
+        """
         The leftmost column is used to draw info about maximum, minimum
         and average bw
         """
@@ -214,8 +214,8 @@ class LoadGraph:
         """ rect => a rectangle holding the size of the widget """
         self.__rect  = rect
 
-        self.__inner.x = LoadGraph.padding["left"] 
-        self.__inner.y = LoadGraph.padding["top"] 
+        self.__inner.x = LoadGraph.padding["left"]
+        self.__inner.y = LoadGraph.padding["top"]
         self.__inner.width = rect.width - LoadGraph.padding["right"] - self.__inner.x
         self.__inner.height = rect.height - LoadGraph.padding["bottom"] - self.__inner.y
 
@@ -282,6 +282,8 @@ class Monitor:
                               'widget_out': None,
                               'widget_speed_in': None,
                               'widget_speed_out': None,
+                              'widget_histo_in': None,
+                              'widget_histo_out': None,
                               'graph': None,
                               'histogram': [],
                               }
@@ -320,6 +322,17 @@ class Monitor:
             # speed
             speed_in = diff_in / interval
             speed_out = diff_out / interval
+            # calculating histogram
+            histogram_in = self.ifaces[iface]['histogram']['in']
+            histogram_out = self.ifaces[iface]['histogram']['out']
+            if histogram_in:
+                histo_in = reduce(lambda x, y: x+y, histogram_in) / HISTOGRAM_SIZE
+            else:
+                histo_in = 0
+            if histogram_out:
+                histo_out = reduce(lambda x, y: x+y, histogram_out) / HISTOGRAM_SIZE
+            else:
+                histo_out = 0
             # update saved values
             self.ifaces[iface]['data_in'] = data_in
             self.ifaces[iface]['data_out'] = data_out
@@ -329,7 +342,9 @@ class Monitor:
             for widget, value in [('widget_in', total_in),
                                   ('widget_out', total_out),
                                   ('widget_speed_in', speed_in),
-                                  ('widget_speed_out', speed_out)]:
+                                  ('widget_speed_out', speed_out),
+                                  ('widget_histo_in', histo_in),
+                                  ('widget_histo_out', histo_out)]:
                 if widget in self.ifaces[iface]:
                     self.ifaces[iface][widget].set_text(str(value))
                 else:
@@ -440,6 +455,12 @@ class Monitor:
         speed_out_h, speed_out = self.build_value_pair(sizegroup, _("Upload speed:"))
         self.ifaces[iface]["widget_speed_out"] = speed_out
         vbox.pack_start(speed_out_h, False, False)
+        histo_in_h, histo_in = self.build_value_pair(sizegroup, _("Average download speed (over past %d samples):") % HISTOGRAM_SIZE)
+        self.ifaces[iface]["widget_histo_in"] = histo_in
+        vbox.pack_start(histo_in_h, False, False)
+        histo_out_h, histo_out = self.build_value_pair(sizegroup, _("Average upload speed (over past %d samples):") % HISTOGRAM_SIZE)
+        self.ifaces[iface]["widget_histo_out"] = histo_out
+        vbox.pack_start(histo_out_h, False, False)
 
         # statistics button
         if self.check_network_accounting(iface):
