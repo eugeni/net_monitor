@@ -1,5 +1,6 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.01:
 - implemented integration with vnstat
 - initial release
