@@ -32,17 +32,22 @@ ifaces = {}
 HISTOGRAM_SIZE=50
 
 
-def get_ip_address(ifname):
+def get_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    mac=_("No physical address")
+    # ip address
     try:
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,  # SIOCGIFADDR
-            struct.pack('256s', ifname[:15])
-        )[20:24])
+        addr=socket.inet_ntoa(fcntl.ioctl( s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
     except:
-        # no address
-        return _("No address assigned")
+        addr=_("No address assigned")
+    # mac address
+    try:
+        mac_struct=fcntl.ioctl( s.fileno(), 0x8927, struct.pack('256s', ifname[:15]))[18:24]
+        mac=":".join(["%02x" % ord(char) for char in mac_struct])
+    except:
+        addr=_("No address assigned")
+    # addr, mac
+    return addr, mac
 
 def readnet():
     """Reads values from /proc/net/dev"""
@@ -359,13 +364,15 @@ class Monitor:
             self.ifaces[iface]['total_in'] = total_in
             self.ifaces[iface]['total_out'] = total_out
             # update widgets
+            ip, mac = get_address(iface)
             for widget, value in [('widget_in', total_in),
                                   ('widget_out', total_out),
                                   ('widget_speed_in', speed_in),
                                   ('widget_speed_out', speed_out),
                                   ('widget_histo_in', histo_in),
                                   ('widget_histo_out', histo_out),
-                                  ('widget_address', get_ip_address(iface))
+                                  ('widget_ip_address', ip),
+                                  ('widget_hw_address', mac),
                                   ]:
                 if widget in self.ifaces[iface]:
                     self.ifaces[iface][widget].set_text(str(value))
@@ -463,9 +470,12 @@ class Monitor:
         vbox.pack_start(iface_h, False, False)
         iface_s, iface_status = self.build_value_pair(sizegroup, _("Device status:"), _("Up"))
         vbox.pack_start(iface_s, False, False)
-        iface_addr_s, iface_addr = self.build_value_pair(sizegroup, _("Address:"))
-        self.ifaces[iface]["widget_address"] = iface_addr
+        iface_addr_s, iface_addr = self.build_value_pair(sizegroup, _("IP Address:"))
+        self.ifaces[iface]["widget_ip_address"] = iface_addr
         vbox.pack_start(iface_addr_s, False, False)
+        iface_mac_s, iface_mac = self.build_value_pair(sizegroup, _("Hardware address:"))
+        self.ifaces[iface]["widget_hw_address"] = iface_mac
+        vbox.pack_start(iface_mac_s, False, False)
 
         # traffic
         total_in_h, total_in = self.build_value_pair(sizegroup, _("Received data:"))
