@@ -1,0 +1,7 @@
+TODO for net_monitor:
+
+ - show advanced values (netmask, broadcast, MTU, flags, ...)
+ - implement advanced logging (start and stop counting network transfers,
+   accounting number of packets, bytes, and so on)
+ - correctly detect when device is active
+ - highlight interfaces with higher transmission rate
