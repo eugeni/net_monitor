@@ -414,7 +414,7 @@ class Monitor:
             graph_vnstat.set_from_pixbuf(pixbuf)
             stats_vbox.pack_start(graph_vnstat)
             # buttons
-            frame = gtk.Frame(_("Show interface statistics"))
+            frame = gtk.Frame(_("Network traffic statistics for %s") % iface)
             stats_vbox.add(frame)
             vbox = gtk.VBox()
             frame.add(vbox)
@@ -458,26 +458,30 @@ class Monitor:
         self.ifaces[iface]['graph'] = graph
         self.ifaces[iface]['histogram'] = histogram
 
-        frame = gtk.Frame(_("Interface statistics"))
-        traf_vbox.pack_start(frame)
-        vbox = gtk.VBox()
-        frame.add(vbox)
+        frame_global = gtk.Frame(_("Interface settings"))
+        traf_vbox.pack_start(frame_global, False, False)
+        vbox_global = gtk.VBox(spacing=5)
+        frame_global.add(vbox_global)
         # configuring callbacks
         sizegroup = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
 
         # interface
         iface_h, iface_p = self.build_value_pair(sizegroup, _("Network interface:"), iface)
-        vbox.pack_start(iface_h, False, False)
+        vbox_global.pack_start(iface_h, False, False)
         iface_s, iface_status = self.build_value_pair(sizegroup, _("Device status:"), _("Up"))
-        vbox.pack_start(iface_s, False, False)
+        vbox_global.pack_start(iface_s, False, False)
         iface_addr_s, iface_addr = self.build_value_pair(sizegroup, _("IP Address:"))
         self.ifaces[iface]["widget_ip_address"] = iface_addr
-        vbox.pack_start(iface_addr_s, False, False)
+        vbox_global.pack_start(iface_addr_s, False, False)
         iface_mac_s, iface_mac = self.build_value_pair(sizegroup, _("Hardware address:"))
         self.ifaces[iface]["widget_hw_address"] = iface_mac
-        vbox.pack_start(iface_mac_s, False, False)
+        vbox_global.pack_start(iface_mac_s, False, False)
 
         # traffic
+        frame = gtk.Frame(_("Traffic statistics"))
+        traf_vbox.pack_start(frame)
+        vbox = gtk.VBox(spacing=5)
+        frame.add(vbox)
         total_in_h, total_in = self.build_value_pair(sizegroup, _("Received data:"))
         self.ifaces[iface]["widget_in"] = total_in
         vbox.pack_start(total_in_h, False, False)
@@ -510,11 +514,13 @@ class Monitor:
 
     def build_value_pair(self, sizegroup, text, value_text=None):
         """Builds a value pair"""
-        hbox = gtk.HBox()
+        hbox = gtk.HBox(spacing=10)
         name = gtk.Label(text)
-        hbox.pack_start(name)
+        name.set_property("xalign", 1.0)
+        hbox.pack_start(name, False, False)
         value = gtk.Label(value_text)
-        hbox.pack_start(value)
+        value.set_property("xalign", 0.0)
+        hbox.pack_start(value, False, False)
         sizegroup.add_widget(name)
         return hbox, value
 
