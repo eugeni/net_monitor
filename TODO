@@ -5,3 +5,5 @@ TODO for net_monitor:
    accounting number of packets, bytes, and so on)
  - correctly detect when device is active
  - highlight interfaces with higher transmission rate
+ - wireless: show essid and signal level when available (/proc/net/wireless)
+ - network info: show gateway, routes and dns info (/proc/net/routes)
