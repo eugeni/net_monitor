@@ -60,8 +60,9 @@ def readnet():
         net[dev] = vals
     return net
 
-def get_traffic(iface):
-    net = readnet()
+def get_traffic(iface, net=None):
+    if not net:
+        net = readnet()
     if iface in net:
         bytes_in = int(net[iface][0])
         bytes_out = int(net[iface][8])
@@ -296,8 +297,9 @@ class Monitor:
         sorted_ifaces = self.ifaces.keys()
         sorted_ifaces.sort()
 
+        net=readnet()
         for iface in sorted_ifaces:
-            data_in, data_out = get_traffic(iface)
+            data_in, data_out = get_traffic(iface,net)
             self.ifaces[iface] = {'data_in': 0,
                               'data_out': 0,
                               'total_in': 0,
@@ -324,12 +326,13 @@ class Monitor:
 
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
+        net=readnet()
         for iface in self.ifaces:
             old_data_in = self.ifaces[iface]['data_in']
             old_data_out = self.ifaces[iface]['data_out']
             total_in = self.ifaces[iface]['total_in']
             total_out = self.ifaces[iface]['total_out']
-            data_in, data_out = get_traffic(iface)
+            data_in, data_out = get_traffic(iface, net)
             # is it the first measure?
             if old_data_in == 0 and old_data_out == 0:
                 old_data_in = data_in
