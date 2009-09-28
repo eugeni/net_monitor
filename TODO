@@ -7,3 +7,4 @@ TODO for net_monitor:
  - highlight interfaces with higher transmission rate
  - wireless: show essid and signal level when available (/proc/net/wireless)
  - network info: show gateway, routes and dns info (/proc/net/routes)
+ - auto-detect new and removed interfaces (ppp0, etc)
