@@ -8,3 +8,9 @@ TODO for net_monitor:
  - wireless: show essid and signal level when available (/proc/net/wireless)
  - network info: show gateway, routes and dns info (/proc/net/routes)
  - auto-detect new and removed interfaces (ppp0, etc)
+ - advanced fields:
+   - known ARP addresses per interface
+   - known routes per interface
+   - advanced network statistics (/proc/net/netstat)
+   - socket statistics
+   - ip forwarding (/proc/sys/net/ipv4/ip_forward)
