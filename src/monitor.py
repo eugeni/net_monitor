@@ -1,13 +1,15 @@
 #!/usr/bin/python
 """net_monitor: wifi monitoring"""
 
-# native librari implements a few bits
-import _native
+import os
 import socket
 import fcntl
 import struct
 import traceback
 import array
+
+# native librari implements a few bits
+import _native
 
 
 class Monitor:
@@ -38,12 +40,15 @@ class Monitor:
             res = self.ioctl(func, data)
             return res
         except:
-            traceback.print_exc()
             return None
 
     def wifi_get_max_quality(self, iface):
         """Gets maximum quality value"""
         return _native.wifi_get_max_quality(iface)
+
+    def wifi_get_ap(self, iface):
+        """Gets access point address"""
+        return _native.wifi_get_ap(iface)
 
     def wifi_get_essid(self, iface):
         """Get current essid for an interface"""
@@ -56,6 +61,8 @@ class Monitor:
     def wifi_get_mode(self, iface):
         """Get current mode from an interface"""
         result = self.wifi_ioctl(iface, self.SIOCGIWMODE)
+        if not result:
+            return _("Unknown")
         mode = struct.unpack("i", result[16:20])[0]
         return self.modes[mode]
 
@@ -74,7 +81,7 @@ class Monitor:
                 bitrate = float(m) * 10**e
             return bitrate
         else:
-            return -1
+            return 0
 
     def get_status(self, ifname):
         try:
@@ -88,9 +95,10 @@ class Monitor:
             status = _("Unknown")
         return status
 
-    def readwireless(self):
+    def wireless_stats(self):
         """Check if device is wireless and get its details if necessary"""
         try:
+            stats = {}
             with open("/proc/net/wireless") as fd:
                 ifaces = fd.readlines()[2:]
             for line in ifaces:
@@ -100,11 +108,17 @@ class Monitor:
                 iface, params = line.split(":", 1)
                 iface = iface.strip()
                 params = params.replace(".", "").split()
-            return {}
+                link = int(params[1])
+                stats[iface] = link
+            return stats
         except:
             # something bad happened
             traceback.print_exc()
             return {}
+
+    def has_wireless(self, iface):
+        """Checks if device has wireless capabilities"""
+        return os.access("/sys/class/net/%s/wireless" % iface, os.R_OK)
 
     def get_address(self, ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

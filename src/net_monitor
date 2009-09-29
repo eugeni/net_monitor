@@ -40,18 +40,17 @@ class LoadGraph:
     bandwidth load.
     """
     # we don't want to allow the window to shrink below this height
-    min_height = 70
     padding = { "left" : 50, "right" : 10, "top" : 10, "bottom" : 10 }
     colors  = ( "bg", "bg_outer", "in", "out" )
 
-    def __init__(self, widget, hist, size):
+    def __init__(self, widget, hist, size, min_height=70, axes_text=_("Bytes"), draw_both=True, max=None):
         """
         widget   => GtkDrawingArea we paint into
         hist     => a list of integers containing the hist of incoming traffic
         width, height => initial size of the GtkDrawingArea widget
         """
         # set the minimum height of the widget
-        widget.set_size_request(-1, 70)
+        widget.set_size_request(-1, min_height)
 
         # the object holding the history and its size
         self.__hist = hist
@@ -61,6 +60,16 @@ class LoadGraph:
         self.__str_min = "0"
         self.__str_mid = ""     # gets computed later
         self.__str_max = ""     # gets computer later
+
+        # axes descriptions
+        self.axes_text = axes_text
+
+        # are we drawing both values?
+        self.draw_both = draw_both
+
+        # minimum and maximum values
+        self.min = min
+        self.max = max
 
         # size of the GtkDrawingArea
         self.__rect = self.__inner = gtk.gdk.Rectangle()
@@ -113,7 +122,8 @@ class LoadGraph:
 
         # draw the actual bandwidth curves
         self.__draw_bw(self.__in, self.__colors["fg_in"])
-        self.__draw_bw(self.__out, self.__colors["fg_out"])
+        if self.draw_both:
+                self.__draw_bw(self.__out, self.__colors["fg_out"])
 
         # draw minimum, middle and max numbers
         self.__draw_num(self.__inner.height + self.__inner.y, self.__str_min, (255, 255, 255))
@@ -152,7 +162,6 @@ class LoadGraph:
             return [self.__inner.height + self.__inner.y] * len(hist)
 
         for item in hist:
-            if item <= 100: item = 0     # treshold to get rid of really small peaks
             converted.append((self.__inner.height - int(item / self.__mesh_y)) + self.__inner.y)
         return converted
 
@@ -170,15 +179,18 @@ class LoadGraph:
 
     def __get_max(self):
         """ Finds the maximum value in both incoming and outgoing queue  """
-        if self.__hist["in"]:
-            maxin = max(self.__hist["in"])
+        if self.max != None:
+                self.maxval = self.max
         else:
-            maxin = 0
-        if self.__hist["out"]:
-            maxout = max(self.__hist["out"])
-        else:
-            maxout = 0
-        self.maxval = max(maxin, maxout)
+                if self.__hist["in"]:
+                    maxin = max(self.__hist["in"])
+                else:
+                    maxin = 0
+                if self.__hist["out"]:
+                    maxout = max(self.__hist["out"])
+                else:
+                    maxout = 0
+                self.maxval = max(maxin, maxout)
 
     def __text_size(self):
         """ Computes the size of the text and thus the left border """
@@ -186,8 +198,11 @@ class LoadGraph:
         if val == 0 and self.maxval != 0:
             val = self.maxval
 
-        self.__str_max = "%d %s" % (val, _("Bytes"))
-        self.__str_mid = "%d %s" % (val/2, _("Bytes"))
+        self.__str_max = "%d %s" % (val, self.axes_text)
+        if val != val/2:
+            self.__str_mid = "%d %s" % (val/2, self.axes_text)
+        else:
+            self.__str_mid = ""
         LoadGraph.padding["left"] = self.__context.text_extents(self.__str_max)[2] + 10
 
     def __on_size(self, rect):
@@ -254,6 +269,7 @@ class MonitorGui:
 
         self.ifaces = self.monitor.readnet()
         self.enabled_ifaces = []
+        self.wireless_ifaces = filter(self.monitor.has_wireless, self.ifaces.keys())
 
         sorted_ifaces = self.ifaces.keys()
         sorted_ifaces.sort()
@@ -287,8 +303,9 @@ class MonitorGui:
 
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
+        # TODO: move it to Monitor()?
         net=self.monitor.readnet()
-        self.monitor.readwireless()
+        wifi_stats = self.monitor.wireless_stats()
         for iface in self.ifaces:
             status = self.monitor.get_status(iface)
             old_data_in = self.ifaces[iface]['data_in']
@@ -296,6 +313,29 @@ class MonitorGui:
             total_in = self.ifaces[iface]['total_in']
             total_out = self.ifaces[iface]['total_out']
             data_in, data_out = self.monitor.get_traffic(iface, net)
+            # is it a wireless interface?
+            if iface in self.wireless_ifaces:
+                essid = self.monitor.wifi_get_essid(iface)
+                mode = self.monitor.wifi_get_mode(iface)
+                bitrate = self.monitor.wifi_get_bitrate(iface)
+                ap = self.monitor.wifi_get_ap(iface)
+                link = wifi_stats.get(iface, 0)
+                # calculate link quality
+                if "max_quality" in self.ifaces[iface]:
+                    max_quality = self.ifaces[iface]["max_quality"]
+                    if max_quality != 0:
+                        quality = link * 100.0 / max_quality
+                    else:
+                        quality = 0
+                else:
+                    quality = 0
+
+            else:
+                essid = None
+                mode = None
+                bitrate = None
+                ap = None
+                quality = 0
             # is it the first measure?
             if old_data_in == 0 and old_data_out == 0:
                 old_data_in = data_in
@@ -313,22 +353,49 @@ class MonitorGui:
             # speed
             speed_in = diff_in / interval
             speed_out = diff_out / interval
-            # calculating histogram
-            histogram_in = self.ifaces[iface]['histogram']['in']
-            histogram_out = self.ifaces[iface]['histogram']['out']
-            if histogram_in:
-                histo_in = reduce(lambda x, y: x+y, histogram_in) / len(histogram_in)
-            else:
-                histo_in = 0
-            if histogram_out:
-                histo_out = reduce(lambda x, y: x+y, histogram_out) / len(histogram_in)
-            else:
-                histo_out = 0
             # update saved values
             self.ifaces[iface]['data_in'] = data_in
             self.ifaces[iface]['data_out'] = data_out
             self.ifaces[iface]['total_in'] = total_in
             self.ifaces[iface]['total_out'] = total_out
+            # updating graphs
+            for histogram, graph, value_in, value_out in [
+                                ('histogram', 'graph', speed_in, speed_out),
+                                ('link_histogram', 'link_graph', quality, quality)
+                                ]:
+                if histogram not in self.ifaces[iface] or graph not in self.ifaces[iface]:
+                    # skip invalid graphs
+                    continue
+                # calculating histogram
+                hist_in = self.ifaces[iface][histogram]['in']
+                hist_out = self.ifaces[iface][histogram]['out']
+                if hist_in:
+                    histo_in = reduce(lambda x, y: x+y, hist_in) / len(hist_in)
+                else:
+                    histo_in = 0
+                if hist_out:
+                    histo_out = reduce(lambda x, y: x+y, hist_out) / len(hist_in)
+                else:
+                    histo_out = 0
+                hist_in.append(value_in)
+                if len(hist_in) > HISTOGRAM_SIZE:
+                    del hist_in[0]
+                hist_out.append(value_out)
+                if len(hist_out) > HISTOGRAM_SIZE:
+                    del hist_out[0]
+                graph = self.ifaces[iface][graph]
+                graph.update()
+            # calculate average network traffic
+            hist_in = self.ifaces[iface]['histogram']['in']
+            hist_out = self.ifaces[iface]['histogram']['out']
+            if hist_in:
+                histo_in = reduce(lambda x, y: x+y, hist_in) / len(hist_in)
+            else:
+                histo_in = 0
+            if hist_out:
+                histo_out = reduce(lambda x, y: x+y, hist_out) / len(hist_in)
+            else:
+                histo_out = 0
             # update widgets
             ip, mac = self.monitor.get_address(iface)
             for widget, value in [('widget_in', total_in),
@@ -340,22 +407,13 @@ class MonitorGui:
                                   ('widget_ip_address', ip),
                                   ('widget_status', status),
                                   ('widget_hw_address', mac),
+                                  ('widget_essid', essid),
+                                  ('widget_mode', mode),
+                                  ('widget_bitrate', bitrate),
+                                  ('widget_ap', ap),
                                   ]:
                 if widget in self.ifaces[iface]:
                     self.ifaces[iface][widget].set_text(str(value))
-                else:
-                    print "%s not found in %s" % (widget, iface)
-            # updating graph
-            hist_in = self.ifaces[iface]['histogram']['in']
-            hist_in.append(speed_in)
-            if len(hist_in) > HISTOGRAM_SIZE:
-                del hist_in[0]
-            hist_out = self.ifaces[iface]['histogram']['out']
-            hist_out.append(speed_out)
-            if len(hist_out) > HISTOGRAM_SIZE:
-                del hist_out[0]
-            graph = self.ifaces[iface]['graph']
-            graph.update()
         gobject.timeout_add(interval * 1000, self.update)
 
     def check_network_accounting(self, iface):
@@ -415,7 +473,7 @@ class MonitorGui:
 
     def build_iface_stat(self, iface):
         """Builds graphical view for interface"""
-        traf_vbox = gtk.VBox()
+        traf_vbox = gtk.VBox(spacing=5)
         # graph
         draw = gtk.DrawingArea()
         traf_vbox.pack_start(draw)
@@ -454,7 +512,7 @@ class MonitorGui:
 
         # traffic
         frame = gtk.Frame(_("Traffic statistics"))
-        traf_vbox.pack_start(frame)
+        traf_vbox.pack_start(frame, False, False)
         hbox = gtk.HBox(spacing=5)
         frame.add(hbox)
         # building pairs of boxes
@@ -493,6 +551,58 @@ class MonitorGui:
         histo_out_h, histo_out = self.build_value_pair(sizegroup2, _("Average:"))
         self.ifaces[iface]["widget_histo_out"] = histo_out
         self.build_widget_pair(vbox, histo_in_h, histo_out_h)
+
+        # wireless statistics
+        if iface in self.wireless_ifaces:
+            frame = gtk.Frame(_("Wireless properties"))
+            traf_vbox.pack_start(frame)
+            wifi_vbox = gtk.VBox()
+            hbox = gtk.HBox(spacing=5)
+            wifi_vbox.pack_start(hbox, False, False)
+            frame.add(wifi_vbox)
+            # building pairs of boxes
+            vbox_left = gtk.VBox(spacing=5)
+            vbox_right = gtk.VBox(spacing=5)
+            hbox.add(vbox_left)
+            hbox.add(vbox_right)
+            # shortcut for pair of boxes
+            vbox = (vbox_left, vbox_right)
+
+            # essid
+            essid_h, essid = self.build_value_pair(sizegroup1, _("Network ID:"))
+            self.ifaces[iface]["widget_essid"] = essid
+            # mode
+            mode_h, mode = self.build_value_pair(sizegroup2, _("Operating mode:"))
+            self.ifaces[iface]["widget_mode"] = mode
+            self.build_widget_pair(vbox, essid_h, mode_h)
+
+            # bitrate
+            bitrate_h, bitrate = self.build_value_pair(sizegroup2, _("Bitrate:"))
+            self.ifaces[iface]["widget_bitrate"] = bitrate
+            # AP
+            ap_h, ap = self.build_value_pair(sizegroup2, _("Access point or cell:"))
+            self.ifaces[iface]["widget_ap"] = ap
+            self.build_widget_pair(vbox, bitrate_h, ap_h)
+
+            # caching quality values
+            self.ifaces[iface]["max_quality"] = self.monitor.wifi_get_max_quality(iface)
+
+            # link quality graph
+            draw = gtk.DrawingArea()
+            histogram = {"in": [], "out": []}
+            graph = LoadGraph(draw, histogram, HISTOGRAM_SIZE, min_height=50, axes_text="%", draw_both=False, max=100)
+            draw.connect('expose_event', graph.on_expose)
+            self.ifaces[iface]['link_graph'] = graph
+            self.ifaces[iface]['link_histogram'] = histogram
+
+            # adding link quality graph
+            label = gtk.Label()
+            label.set_markup("<b>%s</b>" % _("Connection quality"))
+            label.set_property("xalign", 0.0)
+
+            wifi_vbox.pack_start(label, False, False)
+            wifi_vbox.pack_start(draw)
+
 
         # statistics button
         if self.check_network_accounting(iface):

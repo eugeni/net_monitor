@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <net/ethernet.h>
 #ifndef __user
 #define __user
 #endif
@@ -19,12 +20,12 @@
 /*
  * Constants fof WE-9->15
  */
-#define IW15_MAX_FREQUENCIES	16
-#define IW15_MAX_BITRATES	8
-#define IW15_MAX_TXPOWER	8
-#define IW15_MAX_ENCODING_SIZES	8
-#define IW15_MAX_SPY		8
-#define IW15_MAX_AP		8
+#define IW15_MAX_FREQUENCIES    16
+#define IW15_MAX_BITRATES   8
+#define IW15_MAX_TXPOWER    8
+#define IW15_MAX_ENCODING_SIZES 8
+#define IW15_MAX_SPY        8
+#define IW15_MAX_AP     8
 
 /*
  *  Struct iw_range up to WE-15
@@ -89,17 +90,17 @@ union   iw_range_raw
 #define iwr_off(f)  ( ((char *) &(((struct iw_range *) NULL)->f)) - \
               (char *) NULL)
 
-typedef struct iw_range		iwrange;
+typedef struct iw_range     iwrange;
 
 /*------------------------------------------------------------------*/
 /*
  * Wrapper to extract some Wireless Parameter out of the driver
  */
 static inline int
-iw_get_ext(int			skfd,		/* Socket to the kernel */
-	   const char *		ifname,		/* Device name */
-	   int			request,	/* WE ID */
-	   struct iwreq *	pwrq)		/* Fixed part of the request */
+iw_get_ext(int          skfd,       /* Socket to the kernel */
+       const char *     ifname,     /* Device name */
+       int          request,    /* WE ID */
+       struct iwreq *   pwrq)       /* Fixed part of the request */
 {
   /* Set device name */
   strncpy(pwrq->ifr_name, ifname, IFNAMSIZ);
@@ -186,6 +187,62 @@ iw_get_range_info(int skfd, const char *ifname, iwrange * range)
   return(0);
 }
 
+/*------------------------------------------------------------------*/
+/*
+ * Display an Ethernet address in readable format.
+ */
+void
+iw_ether_ntop(const struct ether_addr * eth,
+          char *            buf)
+{
+  sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
+      eth->ether_addr_octet[0], eth->ether_addr_octet[1],
+      eth->ether_addr_octet[2], eth->ether_addr_octet[3],
+      eth->ether_addr_octet[4], eth->ether_addr_octet[5]);
+}
+
+/*------------------------------------------------------------------*/
+/*
+ * Compare two ethernet addresses
+ */
+static inline int
+iw_ether_cmp(const struct ether_addr* eth1, const struct ether_addr* eth2)
+{
+  return memcmp(eth1, eth2, sizeof(*eth1));
+}
+
+/*------------------------------------------------------------------*/
+/*
+ * Display an Wireless Access Point Socket Address in readable format.
+ * Note : 0x44 is an accident of history, that's what the Orinoco/PrismII
+ * chipset report, and the driver doesn't filter it.
+ */
+char *
+iw_sawap_ntop(const struct sockaddr *   sap,
+          char *            buf)
+{
+  const struct ether_addr ether_zero = {{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }};
+  const struct ether_addr ether_bcast = {{ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }};
+  const struct ether_addr ether_hack = {{ 0x44, 0x44, 0x44, 0x44, 0x44, 0x44 }};
+  const struct ether_addr * ether_wap = (const struct ether_addr *) sap->sa_data;
+
+  if(!iw_ether_cmp(ether_wap, &ether_zero))
+    sprintf(buf, "Not-Associated");
+  else
+    if(!iw_ether_cmp(ether_wap, &ether_bcast))
+      sprintf(buf, "Invalid");
+    else
+      if(!iw_ether_cmp(ether_wap, &ether_hack))
+    sprintf(buf, "None");
+      else
+    iw_ether_ntop(ether_wap, buf);
+  return(buf);
+}
+
+/**************************************************************************/
+/*                            PYTHON BINDINGS                              /
+/*************************************************************************/
+
 static PyObject *
     wifi_get_max_quality(PyObject *self, PyObject *args)
 {
@@ -214,10 +271,41 @@ static PyObject *
     return Py_BuildValue("i", max_quality);
 }
 
+static PyObject *
+    wifi_get_ap(PyObject *self, PyObject *args)
+{
+    const char *iface;
+    int max_quality;
+    int fd, err;
+    struct iwreq wrq;
+    char buffer[32];
+
+    if (!PyArg_ParseTuple(args, "s", &iface))
+        return NULL;
+
+    fd = socket (PF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        fprintf (stderr, "couldn't open socket\n");
+        return NULL;
+    }
+
+    /* Get AP address */
+    err = iw_get_ext(fd, iface, SIOCGIWAP, &wrq);
+
+    if (err < 0) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
+    }
+
+    return Py_BuildValue("s", iw_sawap_ntop(&wrq.u.ap_addr, buffer));
+}
+
 /* python module details */
 static PyMethodDef net_monitor_Methods[] = {
     {"wifi_get_max_quality", wifi_get_max_quality, METH_VARARGS,
         "Find maximum quality value for a wireless interface."},
+    {"wifi_get_ap", wifi_get_ap, METH_VARARGS,
+        "Find AP address for an interface."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
