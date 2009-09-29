@@ -187,7 +187,7 @@ iw_get_range_info(int skfd, const char *ifname, iwrange * range)
 }
 
 static PyObject *
-    get_max_quality(PyObject *self, PyObject *args)
+    wifi_get_max_quality(PyObject *self, PyObject *args)
 {
     const char *iface;
     int max_quality;
@@ -216,14 +216,14 @@ static PyObject *
 
 /* python module details */
 static PyMethodDef net_monitor_Methods[] = {
-    {"get_max_quality", get_max_quality, METH_VARARGS,
+    {"wifi_get_max_quality", wifi_get_max_quality, METH_VARARGS,
         "Find maximum quality value for a wireless interface."},
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 PyMODINIT_FUNC
-initnet_monitor(void)
+init_native(void)
 {
-    (void) Py_InitModule("net_monitor", net_monitor_Methods);
+    (void) Py_InitModule("_native", net_monitor_Methods);
 }
 
