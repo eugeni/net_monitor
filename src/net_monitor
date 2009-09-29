@@ -146,7 +146,7 @@ class LoadGraph:
         self.__set_context_color(self.__context, color)
 
         x = self.__inner.x + self.__mesh_x
-        for i in bw_list[1:]:
+        for i in bw_list[:-1]:
             self.__context.line_to(x, i)
             x += self.__mesh_x
         self.__context.stroke()
@@ -329,7 +329,6 @@ class MonitorGui:
                         quality = 0
                 else:
                     quality = 0
-
             else:
                 essid = None
                 mode = None
