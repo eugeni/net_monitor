@@ -12,3 +12,4 @@ TODO for net_monitor:
    - advanced network statistics (/proc/net/netstat)
    - socket statistics
    - ip forwarding (/proc/sys/net/ipv4/ip_forward)
+ - graphs: correctly shift values
