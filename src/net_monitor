@@ -28,81 +28,10 @@ try:
 except IOError:
     _ = str
 
+from net_monitor import Monitor
+
 ifaces = {}
 HISTOGRAM_SIZE=50
-
-def get_status(ifname):
-    try:
-        fd = open("/sys/class/net/%s/operstate" % ifname)
-        status = fd.readline().strip()
-        fd.close()
-    except:
-        status="unknown"
-    if status == "unknown":
-        # pretty-format interface status
-        status = _("Unknown")
-    return status
-
-def readwireless():
-    """Check if device is wireless and get its details if necessary"""
-    try:
-        with open("/proc/net/wireless") as fd:
-            ifaces = fd.readlines()[2:]
-        for line in ifaces:
-            line = line.strip()
-            if not line:
-                continue
-            iface, params = line.split(":", 1)
-            iface = iface.strip()
-            params = params.replace(".", "").split()
-        return {}
-    except:
-        # something bad happened
-        traceback.print_exc()
-        return {}
-
-def get_address(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    mac=_("No physical address")
-    # ip address
-    try:
-        addr=socket.inet_ntoa(fcntl.ioctl( s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
-    except:
-        addr=_("No address assigned")
-    # mac address
-    try:
-        mac_struct=fcntl.ioctl( s.fileno(), 0x8927, struct.pack('256s', ifname[:15]))[18:24]
-        mac=":".join(["%02x" % ord(char) for char in mac_struct])
-    except:
-        addr=_("No address assigned")
-    # addr, mac
-    return addr, mac
-
-def readnet():
-    """Reads values from /proc/net/dev"""
-    net = {}
-    data = open("/proc/net/dev").readlines()[2:]
-    for l in data:
-        dev, vals = l.split(":")
-        dev = dev.strip()
-        vals = vals.split()
-        net[dev] = vals
-    return net
-
-def get_traffic(iface, net=None):
-    if not net:
-        net = readnet()
-    if iface in net:
-        bytes_in = int(net[iface][0])
-        bytes_out = int(net[iface][8])
-    else:
-        bytes_in = 0
-        bytes_out = 0
-    return bytes_in, bytes_out
-
-def format_size(size):
-    """Pretty-Formats size"""
-    return size
 
 # borrowed from gnome-network-monitor 0.9.1 (gnetworkmonitor.sourceforge.net)
 class LoadGraph:
@@ -305,7 +234,7 @@ class LoadGraph:
         for key, value in kwargs.items():
             self.__colors[key] = value
 
-class Monitor:
+class MonitorGui:
     def __init__(self):
         self.window = gtk.Window()
         self.window.set_title(_("Network monitor"))
@@ -320,15 +249,18 @@ class Monitor:
         self.main_vbox.pack_start(self.notebook)
         #self.notebook.connect('switch-page', self.show_net_status)
 
-        self.ifaces = readnet()
+        # monitor
+        self.monitor = Monitor()
+
+        self.ifaces = self.monitor.readnet()
         self.enabled_ifaces = []
 
         sorted_ifaces = self.ifaces.keys()
         sorted_ifaces.sort()
 
-        net=readnet()
+        net=self.monitor.readnet()
         for iface in sorted_ifaces:
-            data_in, data_out = get_traffic(iface,net)
+            data_in, data_out = self.monitor.get_traffic(iface,net)
             self.ifaces[iface] = {'data_in': 0,
                               'data_out': 0,
                               'total_in': 0,
@@ -355,15 +287,15 @@ class Monitor:
 
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
-        net=readnet()
-        readwireless()
+        net=self.monitor.readnet()
+        self.monitor.readwireless()
         for iface in self.ifaces:
-            status = get_status(iface)
+            status = self.monitor.get_status(iface)
             old_data_in = self.ifaces[iface]['data_in']
             old_data_out = self.ifaces[iface]['data_out']
             total_in = self.ifaces[iface]['total_in']
             total_out = self.ifaces[iface]['total_out']
-            data_in, data_out = get_traffic(iface, net)
+            data_in, data_out = self.monitor.get_traffic(iface, net)
             # is it the first measure?
             if old_data_in == 0 and old_data_out == 0:
                 old_data_in = data_in
@@ -385,11 +317,11 @@ class Monitor:
             histogram_in = self.ifaces[iface]['histogram']['in']
             histogram_out = self.ifaces[iface]['histogram']['out']
             if histogram_in:
-                histo_in = reduce(lambda x, y: x+y, histogram_in) / HISTOGRAM_SIZE
+                histo_in = reduce(lambda x, y: x+y, histogram_in) / len(histogram_in)
             else:
                 histo_in = 0
             if histogram_out:
-                histo_out = reduce(lambda x, y: x+y, histogram_out) / HISTOGRAM_SIZE
+                histo_out = reduce(lambda x, y: x+y, histogram_out) / len(histogram_in)
             else:
                 histo_out = 0
             # update saved values
@@ -398,7 +330,7 @@ class Monitor:
             self.ifaces[iface]['total_in'] = total_in
             self.ifaces[iface]['total_out'] = total_out
             # update widgets
-            ip, mac = get_address(iface)
+            ip, mac = self.monitor.get_address(iface)
             for widget, value in [('widget_in', total_in),
                                   ('widget_out', total_out),
                                   ('widget_speed_in', speed_in),
@@ -495,47 +427,72 @@ class Monitor:
 
         frame_global = gtk.Frame(_("Interface settings"))
         traf_vbox.pack_start(frame_global, False, False)
-        vbox_global = gtk.VBox(spacing=5)
-        frame_global.add(vbox_global)
+        hbox = gtk.HBox(spacing=5)
+        frame_global.add(hbox)
+        # building pairs of boxes
+        vbox_left = gtk.VBox(spacing=5)
+        vbox_right = gtk.VBox(spacing=5)
+        hbox.add(vbox_left)
+        hbox.add(vbox_right)
+        # shortcut for pair of boxes
+        vbox = (vbox_left, vbox_right)
         # configuring callbacks
-        sizegroup = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        sizegroup1 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        sizegroup2 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
 
         # interface
-        iface_h, iface_p = self.build_value_pair(sizegroup, _("Network interface:"), iface)
-        vbox_global.pack_start(iface_h, False, False)
-        iface_s, iface_status = self.build_value_pair(sizegroup, _("Device status:"))
+        iface_h, iface_p = self.build_value_pair(sizegroup1, _("Network interface:"), iface)
+        iface_s, iface_status = self.build_value_pair(sizegroup2, _("Device status:"))
         self.ifaces[iface]["widget_status"] = iface_status
-        vbox_global.pack_start(iface_s, False, False)
-        iface_addr_s, iface_addr = self.build_value_pair(sizegroup, _("IP Address:"))
+        self.build_widget_pair(vbox, iface_h, iface_s)
+
+        iface_addr_s, iface_addr = self.build_value_pair(sizegroup1, _("IP Address:"))
         self.ifaces[iface]["widget_ip_address"] = iface_addr
-        vbox_global.pack_start(iface_addr_s, False, False)
-        iface_mac_s, iface_mac = self.build_value_pair(sizegroup, _("Hardware address:"))
+        iface_mac_s, iface_mac = self.build_value_pair(sizegroup2, _("Hardware address:"))
         self.ifaces[iface]["widget_hw_address"] = iface_mac
-        vbox_global.pack_start(iface_mac_s, False, False)
+        self.build_widget_pair(vbox, iface_addr_s, iface_mac_s)
 
         # traffic
         frame = gtk.Frame(_("Traffic statistics"))
         traf_vbox.pack_start(frame)
-        vbox = gtk.VBox(spacing=5)
-        frame.add(vbox)
-        total_in_h, total_in = self.build_value_pair(sizegroup, _("Received data:"))
+        hbox = gtk.HBox(spacing=5)
+        frame.add(hbox)
+        # building pairs of boxes
+        vbox_left = gtk.VBox(spacing=5)
+        vbox_right = gtk.VBox(spacing=5)
+        hbox.add(vbox_left)
+        hbox.add(vbox_right)
+        # shortcut for pair of boxes
+        vbox = (vbox_left, vbox_right)
+
+        label_down = gtk.Label()
+        label_down.set_markup("<b>%s</b>" % _("Download"))
+        label_down.set_property("xalign", 0.0)
+        label_up = gtk.Label()
+        label_up.set_property("xalign", 0.0)
+        label_up.set_markup("<b>%s</b>" % _("Upload"))
+
+        self.build_widget_pair(vbox, label_down, label_up)
+
+        total_in_h, total_in = self.build_value_pair(sizegroup1, _("Received data:"))
         self.ifaces[iface]["widget_in"] = total_in
-        vbox.pack_start(total_in_h, False, False)
-        total_out_h, total_out = self.build_value_pair(sizegroup, _("Sent data:"))
+        total_out_h, total_out = self.build_value_pair(sizegroup2, _("Sent data:"))
         self.ifaces[iface]["widget_out"] = total_out
-        vbox.pack_start(total_out_h, False, False)
-        speed_in_h, speed_in = self.build_value_pair(sizegroup, _("Download speed:"))
+        self.build_widget_pair(vbox, total_in_h, total_out_h)
+
+        # speed
+        speed_in_h, speed_in = self.build_value_pair(sizegroup1, _("Download speed:"))
         self.ifaces[iface]["widget_speed_in"] = speed_in
-        vbox.pack_start(speed_in_h, False, False)
-        speed_out_h, speed_out = self.build_value_pair(sizegroup, _("Upload speed:"))
+        speed_out_h, speed_out = self.build_value_pair(sizegroup2, _("Upload speed:"))
         self.ifaces[iface]["widget_speed_out"] = speed_out
-        vbox.pack_start(speed_out_h, False, False)
-        histo_in_h, histo_in = self.build_value_pair(sizegroup, _("Average download speed (over past %d samples):") % HISTOGRAM_SIZE)
+        self.build_widget_pair(vbox, speed_in_h, speed_out_h)
+
+        # speed - histo
+        histo_in_h, histo_in = self.build_value_pair(sizegroup1, _("Average:"))
         self.ifaces[iface]["widget_histo_in"] = histo_in
-        vbox.pack_start(histo_in_h, False, False)
-        histo_out_h, histo_out = self.build_value_pair(sizegroup, _("Average upload speed (over past %d samples):") % HISTOGRAM_SIZE)
+        histo_out_h, histo_out = self.build_value_pair(sizegroup2, _("Average:"))
         self.ifaces[iface]["widget_histo_out"] = histo_out
-        vbox.pack_start(histo_out_h, False, False)
+        self.build_widget_pair(vbox, histo_in_h, histo_out_h)
 
         # statistics button
         if self.check_network_accounting(iface):
@@ -548,16 +505,24 @@ class Monitor:
 
         return traf_vbox
 
+    def build_widget_pair(self, container, w1, w2):
+        """Puts two widgets side-by-side"""
+        # finding left and right vboxes from container
+        vbox_left, vbox_right = container
+        vbox_left.pack_start(w1, False, False)
+        vbox_right.pack_start(w2, False, False)
+
     def build_value_pair(self, sizegroup, text, value_text=None):
         """Builds a value pair"""
         hbox = gtk.HBox(spacing=10)
         name = gtk.Label(text)
-        name.set_property("xalign", 1.0)
+        name.set_property("xalign", 0.0)
         hbox.pack_start(name, False, False)
         value = gtk.Label(value_text)
         value.set_property("xalign", 0.0)
         hbox.pack_start(value, False, False)
-        sizegroup.add_widget(name)
+        if sizegroup:
+            sizegroup.add_widget(name)
         return hbox, value
 
     def update_stat_iface(self, widget, data):
@@ -591,5 +556,5 @@ class Monitor:
         return pixbuf
 
 if __name__ == "__main__":
-    monitor = Monitor()
+    monitor = MonitorGui()
     gtk.main()
