@@ -1,6 +1,13 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- largely improved execution overhead
+- converted to use standard python routines
+- interactively monitoring wireless link level
+- correctly detecting interface data
+- displaying more verbose interface information
+- using two fixed columns for data
+
 0.01:
 - implemented integration with vnstat
 - initial release
