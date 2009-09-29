@@ -1,6 +1,7 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.02:
 - largely improved execution overhead
 - converted to use standard python routines
 - interactively monitoring wireless link level
