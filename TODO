@@ -3,9 +3,10 @@ TODO for net_monitor:
  - show advanced values (netmask, broadcast, MTU, flags, ...)
  - implement advanced logging (start and stop counting network transfers,
    accounting number of packets, bytes, and so on)
- - correctly detect when device is active
+ - correctly detect when device is active (/sys/class/net/iface/operstate)
  - highlight interfaces with higher transmission rate
  - wireless: show essid and signal level when available (/proc/net/wireless)
+   - detect if it is wireless: /sys/class/net/iface/wireless
  - network info: show gateway, routes and dns info (/proc/net/routes)
  - auto-detect new and removed interfaces (ppp0, etc)
  - advanced fields:
