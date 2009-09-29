@@ -1,3 +1,4 @@
+#include <Python.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -185,31 +186,44 @@ iw_get_range_info(int skfd, const char *ifname, iwrange * range)
   return(0);
 }
 
-int main (int argc, char *argv[])
+static PyObject *
+    get_max_quality(PyObject *self, PyObject *args)
 {
+    const char *iface;
+    int max_quality;
     int fd, err;
     struct iw_range range;
 
-    if (argc < 2) {
-        fprintf (stderr, "Usage: range-test <interface>\n");
-        return 1;
-    }
+    if (!PyArg_ParseTuple(args, "s", &iface))
+        return NULL;
 
     fd = socket (PF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
         fprintf (stderr, "couldn't open socket\n");
-        return 1;
+        return NULL;
     }
 
-    err = iw_get_range_info(fd, argv[1], &range);
-    if (err < 0) {
-        perror("Getting wireless range");
-        exit(1);
-    }
-    /* now to the interesting part */
-    printf("Max quality: %d\n", range.max_qual.qual);
-    printf("Max level: %d\n", range.max_qual.level);
-    printf("Max noise: %d\n", range.max_qual.noise);
+    err = iw_get_range_info(fd, iface, &range);
     close (fd);
-    return 0;
+
+    if (err < 0) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
+    }
+    max_quality = range.max_qual.qual;
+    return Py_BuildValue("i", max_quality);
 }
+
+/* python module details */
+static PyMethodDef net_monitor_Methods[] = {
+    {"get_max_quality", get_max_quality, METH_VARARGS,
+        "Find maximum quality value for a wireless interface."},
+    {NULL, NULL, 0, NULL} /* Sentinel */
+};
+
+PyMODINIT_FUNC
+initnet_monitor(void)
+{
+    (void) Py_InitModule("net_monitor", net_monitor_Methods);
+}
+
