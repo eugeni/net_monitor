@@ -31,6 +31,35 @@ except IOError:
 ifaces = {}
 HISTOGRAM_SIZE=50
 
+def get_status(ifname):
+    try:
+        fd = open("/sys/class/net/%s/operstate" % ifname)
+        status = fd.readline().strip()
+        fd.close()
+    except:
+        status="unknown"
+    if status == "unknown":
+        # pretty-format interface status
+        status = _("Unknown")
+    return status
+
+def readwireless():
+    """Check if device is wireless and get its details if necessary"""
+    try:
+        with open("/proc/net/wireless") as fd:
+            ifaces = fd.readlines()[2:]
+        for line in ifaces:
+            line = line.strip()
+            if not line:
+                continue
+            iface, params = line.split(":", 1)
+            iface = iface.strip()
+            params = params.replace(".", "").split()
+        return {}
+    except:
+        # something bad happened
+        traceback.print_exc()
+        return {}
 
 def get_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -327,7 +356,9 @@ class Monitor:
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
         net=readnet()
+        readwireless()
         for iface in self.ifaces:
+            status = get_status(iface)
             old_data_in = self.ifaces[iface]['data_in']
             old_data_out = self.ifaces[iface]['data_out']
             total_in = self.ifaces[iface]['total_in']
@@ -375,6 +406,7 @@ class Monitor:
                                   ('widget_histo_in', histo_in),
                                   ('widget_histo_out', histo_out),
                                   ('widget_ip_address', ip),
+                                  ('widget_status', status),
                                   ('widget_hw_address', mac),
                                   ]:
                 if widget in self.ifaces[iface]:
@@ -471,7 +503,8 @@ class Monitor:
         # interface
         iface_h, iface_p = self.build_value_pair(sizegroup, _("Network interface:"), iface)
         vbox_global.pack_start(iface_h, False, False)
-        iface_s, iface_status = self.build_value_pair(sizegroup, _("Device status:"), _("Up"))
+        iface_s, iface_status = self.build_value_pair(sizegroup, _("Device status:"))
+        self.ifaces[iface]["widget_status"] = iface_status
         vbox_global.pack_start(iface_s, False, False)
         iface_addr_s, iface_addr = self.build_value_pair(sizegroup, _("IP Address:"))
         self.ifaces[iface]["widget_ip_address"] = iface_addr
