@@ -1,6 +1,7 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.03:
 - improved network traffic graphics
 - displaying global system information in statusbar (routes, DNS, ...)
 
