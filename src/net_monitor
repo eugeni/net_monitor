@@ -450,6 +450,7 @@ class MonitorGui:
                                   ('widget_mode', mode),
                                   ('widget_bitrate', bitrate),
                                   ('widget_ap', ap),
+                                  ('quality', "%d%%" % quality),
                                   ]:
                 if widget in self.ifaces[iface]:
                     self.ifaces[iface][widget].set_text(str(value))
