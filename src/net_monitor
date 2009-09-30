@@ -296,16 +296,42 @@ class MonitorGui:
             if self.check_network_accounting(iface):
                 self.enabled_ifaces.append(iface)
 
+        # global statusbar
+        self.statusbar = gtk.Statusbar()
+        self.context_id = self.statusbar.get_context_id("Statusbar")
+        self.main_vbox.pack_start(self.statusbar, False, False, padding=1)
+
+        # add initial message
+        self.statusbar.push(self.context_id, _("Please wait.."))
+
         # configure timer
         gobject.timeout_add(1000, self.update)
 
         self.window.show_all()
+
+    def update_tray_info(self):
+        """Updates tray information"""
+        dns_servers = self.monitor.get_dns()
+        if dns_servers:
+            dns_message = ", ".join(dns_servers)
+        else:
+            dns_message = _("Not found")
+        # routes
+        routes, default_routes = self.monitor.get_routes()
+        if default_routes:
+            gw_message = ", ".join(["%s (%s)" % (gw, iface) for gw, iface in default_routes])
+        else:
+            gw_message = _("Not found")
+        tray_message = _("Default routes: %s; DNS: %s") % (gw_message, dns_message)
+        self.statusbar.pop(self.context_id)
+        self.statusbar.push(self.context_id, tray_message)
 
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
         # TODO: move it to Monitor()?
         net=self.monitor.readnet()
         wifi_stats = self.monitor.wireless_stats()
+        self.update_tray_info()
         for iface in self.ifaces:
             status = self.monitor.get_status(iface)
             old_data_in = self.ifaces[iface]['data_in']

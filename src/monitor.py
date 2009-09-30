@@ -121,16 +121,16 @@ class Monitor:
         return os.access("/sys/class/net/%s/wireless" % iface, os.R_OK)
 
     def get_address(self, ifname):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         mac=_("No physical address")
         # ip address
         try:
-            addr=socket.inet_ntoa(fcntl.ioctl( s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
+            res = self.ioctl(0x8915, struct.pack('256s', ifname[:15]))[20:24]
+            addr=socket.inet_ntoa(res)
         except:
             addr=_("No address assigned")
         # mac address
         try:
-            mac_struct=fcntl.ioctl( s.fileno(), 0x8927, struct.pack('256s', ifname[:15]))[18:24]
+            mac_struct=self.ioctl(0x8927, struct.pack('256s', ifname[:15]))[18:24]
             mac=":".join(["%02x" % ord(char) for char in mac_struct])
         except:
             addr=_("No address assigned")
@@ -164,4 +164,47 @@ class Monitor:
     def format_size(self, size):
         """Pretty-Formats size"""
         return size
+
+    def get_dns(self):
+        """Returns list of DNS servers"""
+        servers = []
+        try:
+            with open("/etc/resolv.conf") as fd:
+                data = fd.readlines()
+            for l in data:
+                l = l.strip()
+                if not l:
+                    continue
+                fields = l.split()
+                if fields[0] == 'nameserver':
+                    servers.append(fields[1])
+        except:
+            traceback.print_exc()
+        return servers
+
+    def get_routes(self):
+        """Read network routes"""
+        routes = []
+        default_routes = []
+        try:
+            with open("/proc/net/route") as fd:
+                data = fd.readlines()[1:]
+            for l in data:
+                l = l.strip()
+                if not l:
+                    continue
+                params = l.split()
+                iface = params[0]
+                dst = int(params[1], 16)
+                gw = int(params[2], 16)
+                gw_str = socket.inet_ntoa(struct.pack("L", gw))
+                metric = int(params[6], 16)
+                mask = int(params[7], 16)
+                routes.append((iface, dst, mask, gw, metric))
+                if dst == 0 and mask == 0:
+                    default_routes.append((gw_str, iface))
+        except:
+            traceback.print_exc()
+            pass
+        return routes, default_routes
 
