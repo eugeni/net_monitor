@@ -1,6 +1,9 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- improved network traffic graphics
+- displaying global system information in statusbar (routes, DNS, ...)
+
 0.02:
 - largely improved execution overhead
 - converted to use standard python routines
