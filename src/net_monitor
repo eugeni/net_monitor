@@ -43,7 +43,9 @@ class LoadGraph:
     padding = { "left" : 50, "right" : 10, "top" : 10, "bottom" : 10 }
     colors  = ( "bg", "bg_outer", "in", "out" )
 
-    def __init__(self, widget, hist, size, min_height=70, axes_text=_("Bytes"), draw_both=True, max=None):
+    def __init__(self, widget, hist, size,
+            min_height=70, axes_text=_("Bytes"), draw_both=True, max=None,
+            draw_legend = True, legend1=_("Upload"), legend2=_("Download")):
         """
         widget   => GtkDrawingArea we paint into
         hist     => a list of integers containing the hist of incoming traffic
@@ -63,6 +65,9 @@ class LoadGraph:
 
         # axes descriptions
         self.axes_text = axes_text
+        self.draw_legend = draw_legend
+        self.legend1 = legend1
+        self.legend2 = legend2
 
         # are we drawing both values?
         self.draw_both = draw_both
@@ -125,6 +130,13 @@ class LoadGraph:
         if self.draw_both:
                 self.__draw_bw(self.__out, self.__colors["fg_out"])
 
+
+        # draw legend
+        if self.draw_legend:
+            self.__draw_legend(self.__inner.y + 15, self.legend1, self.__colors["fg_in"])
+            if self.draw_both:
+                self.__draw_legend(self.__inner.y + 25, self.legend2, self.__colors["fg_out"])
+
         # draw minimum, middle and max numbers
         self.__draw_num(self.__inner.height + self.__inner.y, self.__str_min, (255, 255, 255))
         self.__draw_num(self.__rect.height/2, self.__str_mid, (255, 255, 255))
@@ -135,8 +147,18 @@ class LoadGraph:
         The leftmost column is used to draw info about maximum, minimum
         and average bw
         """
+        self.__set_context_color(self.__context, color)
         self.__context.move_to(5, ypos)
         self.__context.show_text(num)
+        self.__context.stroke()
+
+    def __draw_legend(self, ypos, text, color):
+        """
+        The rightmost column is used to draw graph legend
+        """
+        text_length = self.__context.text_extents(text)[2]
+        self.__context.move_to(self.__inner.x + self.__inner.width - text_length - 20, ypos)
+        self.__context.show_text(text)
         self.__set_context_color(self.__context, color)
         self.__context.stroke()
 
@@ -285,8 +307,6 @@ class MonitorGui:
                               'widget_out': None,
                               'widget_speed_in': None,
                               'widget_speed_out': None,
-                              'widget_histo_in': None,
-                              'widget_histo_out': None,
                               'graph': None,
                               'histogram': [],
                               'address': "",
@@ -413,10 +433,6 @@ class MonitorGui:
             # calculate average network traffic
             hist_in = self.ifaces[iface]['histogram']['in']
             hist_out = self.ifaces[iface]['histogram']['out']
-            if hist_in:
-                histo_in = reduce(lambda x, y: x+y, hist_in) / len(hist_in)
-            else:
-                histo_in = 0
             if hist_out:
                 histo_out = reduce(lambda x, y: x+y, hist_out) / len(hist_in)
             else:
@@ -427,8 +443,6 @@ class MonitorGui:
                                   ('widget_out', total_out),
                                   ('widget_speed_in', speed_in),
                                   ('widget_speed_out', speed_out),
-                                  ('widget_histo_in', histo_in),
-                                  ('widget_histo_out', histo_out),
                                   ('widget_ip_address', ip),
                                   ('widget_status', status),
                                   ('widget_hw_address', mac),
@@ -508,126 +522,100 @@ class MonitorGui:
         self.ifaces[iface]['graph'] = graph
         self.ifaces[iface]['histogram'] = histogram
 
-        frame_global = gtk.Frame(_("Interface settings"))
-        traf_vbox.pack_start(frame_global, False, False)
-        hbox = gtk.HBox(spacing=5)
-        frame_global.add(hbox)
-        # building pairs of boxes
-        vbox_left = gtk.VBox(spacing=5)
-        vbox_right = gtk.VBox(spacing=5)
-        hbox.add(vbox_left)
-        hbox.add(vbox_right)
-        # shortcut for pair of boxes
-        vbox = (vbox_left, vbox_right)
         # configuring callbacks
         sizegroup1 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
         sizegroup2 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
 
-        # interface
-        iface_h, iface_p = self.build_value_pair(sizegroup1, _("Network interface:"), iface)
-        iface_s, iface_status = self.build_value_pair(sizegroup2, _("Device status:"))
-        self.ifaces[iface]["widget_status"] = iface_status
-        self.build_widget_pair(vbox, iface_h, iface_s)
-
-        iface_addr_s, iface_addr = self.build_value_pair(sizegroup1, _("IP Address:"))
-        self.ifaces[iface]["widget_ip_address"] = iface_addr
-        iface_mac_s, iface_mac = self.build_value_pair(sizegroup2, _("Hardware address:"))
-        self.ifaces[iface]["widget_hw_address"] = iface_mac
-        self.build_widget_pair(vbox, iface_addr_s, iface_mac_s)
-
         # traffic
         frame = gtk.Frame(_("Traffic statistics"))
         traf_vbox.pack_start(frame, False, False)
-        hbox = gtk.HBox(spacing=5)
-        frame.add(hbox)
-        # building pairs of boxes
-        vbox_left = gtk.VBox(spacing=5)
-        vbox_right = gtk.VBox(spacing=5)
-        hbox.add(vbox_left)
-        hbox.add(vbox_right)
-        # shortcut for pair of boxes
-        vbox = (vbox_left, vbox_right)
 
-        label_down = gtk.Label()
-        label_down.set_markup("<b>%s</b>" % _("Download"))
-        label_down.set_property("xalign", 0.0)
-        label_up = gtk.Label()
-        label_up.set_property("xalign", 0.0)
-        label_up.set_markup("<b>%s</b>" % _("Upload"))
+        table = gtk.Table(2, 2, False)
+        frame.add(table)
+        cur_row = 0
 
-        self.build_widget_pair(vbox, label_down, label_up)
-
-        total_in_h, total_in = self.build_value_pair(sizegroup1, _("Received data:"))
+        total_in_h, total_in = self.build_value_pair(sizegroup1, _("Downloaded:"))
         self.ifaces[iface]["widget_in"] = total_in
-        total_out_h, total_out = self.build_value_pair(sizegroup2, _("Sent data:"))
+        total_out_h, total_out = self.build_value_pair(sizegroup2, _("Uploaded:"))
         self.ifaces[iface]["widget_out"] = total_out
-        self.build_widget_pair(vbox, total_in_h, total_out_h)
 
         # speed
         speed_in_h, speed_in = self.build_value_pair(sizegroup1, _("Download speed:"))
         self.ifaces[iface]["widget_speed_in"] = speed_in
         speed_out_h, speed_out = self.build_value_pair(sizegroup2, _("Upload speed:"))
         self.ifaces[iface]["widget_speed_out"] = speed_out
-        self.build_widget_pair(vbox, speed_in_h, speed_out_h)
 
-        # speed - histo
-        histo_in_h, histo_in = self.build_value_pair(sizegroup1, _("Average:"))
-        self.ifaces[iface]["widget_histo_in"] = histo_in
-        histo_out_h, histo_out = self.build_value_pair(sizegroup2, _("Average:"))
-        self.ifaces[iface]["widget_histo_out"] = histo_out
-        self.build_widget_pair(vbox, histo_in_h, histo_out_h)
+        # pack items into table
+        for items in [
+                        [total_in_h, total_out_h],
+                        [speed_in_h, speed_out_h],
+                        ]:
+            self.__add_row(table, cur_row, items)
+            cur_row += 1
+
+        frame_global = gtk.Frame(_("Interface settings"))
+        traf_vbox.pack_start(frame_global, False, False)
+
+        table = gtk.Table(2, 2, False)
+        frame_global.add(table)
+        cur_row = 0
+
+        # interface
+        iface_h, iface_p = self.build_value_pair(sizegroup1, _("Network interface:"), iface)
+        iface_s, iface_status = self.build_value_pair(sizegroup1, _("Device status:"))
+        self.ifaces[iface]["widget_status"] = iface_status
+        iface_addr_s, iface_addr = self.build_value_pair(sizegroup2, _("IP Address:"))
+        self.ifaces[iface]["widget_ip_address"] = iface_addr
+        iface_mac_s, iface_mac = self.build_value_pair(sizegroup2, _("Hardware address:"))
+        self.ifaces[iface]["widget_hw_address"] = iface_mac
+
+        # pack items into table
+        for items in [
+                        [iface_h, iface_addr_s],
+                        [iface_s, iface_mac_s]
+                        ]:
+            self.__add_row(table, cur_row, items)
+            cur_row += 1
 
         # wireless statistics
         if iface in self.wireless_ifaces:
-            frame = gtk.Frame(_("Wireless properties"))
-            traf_vbox.pack_start(frame)
-            wifi_vbox = gtk.VBox()
-            hbox = gtk.HBox(spacing=5)
-            wifi_vbox.pack_start(hbox, False, False)
-            frame.add(wifi_vbox)
-            # building pairs of boxes
-            vbox_left = gtk.VBox(spacing=5)
-            vbox_right = gtk.VBox(spacing=5)
-            hbox.add(vbox_left)
-            hbox.add(vbox_right)
-            # shortcut for pair of boxes
-            vbox = (vbox_left, vbox_right)
-
             # essid
-            essid_h, essid = self.build_value_pair(sizegroup1, _("Network ID:"))
+            essid_h, essid = self.build_value_pair(sizegroup1, _("Wireless ESSID:"))
             self.ifaces[iface]["widget_essid"] = essid
             # mode
-            mode_h, mode = self.build_value_pair(sizegroup2, _("Operating mode:"))
+            mode_h, mode = self.build_value_pair(sizegroup2, _("Wireless mode:"))
             self.ifaces[iface]["widget_mode"] = mode
-            self.build_widget_pair(vbox, essid_h, mode_h)
 
             # bitrate
-            bitrate_h, bitrate = self.build_value_pair(sizegroup2, _("Bitrate:"))
+            bitrate_h, bitrate = self.build_value_pair(sizegroup1, _("Connection speed:"))
             self.ifaces[iface]["widget_bitrate"] = bitrate
             # AP
             ap_h, ap = self.build_value_pair(sizegroup2, _("Access point or cell:"))
             self.ifaces[iface]["widget_ap"] = ap
-            self.build_widget_pair(vbox, bitrate_h, ap_h)
 
             # caching quality values
             self.ifaces[iface]["max_quality"] = self.monitor.wifi_get_max_quality(iface)
 
+            # link quality info
+            quality_h, quality = self.build_value_pair(sizegroup1, _("Link quality:"))
+            self.ifaces[iface]["quality"] = quality
+
             # link quality graph
             draw = gtk.DrawingArea()
             histogram = {"in": [], "out": []}
-            graph = LoadGraph(draw, histogram, HISTOGRAM_SIZE, min_height=50, axes_text="%", draw_both=False, max=100)
+            graph = LoadGraph(draw, histogram, HISTOGRAM_SIZE, min_height=40, axes_text="%", draw_both=False, max=100, draw_legend=False)
             draw.connect('expose_event', graph.on_expose)
             self.ifaces[iface]['link_graph'] = graph
             self.ifaces[iface]['link_histogram'] = histogram
 
-            # adding link quality graph
-            label = gtk.Label()
-            label.set_markup("<b>%s</b>" % _("Connection quality"))
-            label.set_property("xalign", 0.0)
-
-            wifi_vbox.pack_start(label, False, False)
-            wifi_vbox.pack_start(draw)
-
+            # pack everything into table
+            for items in [
+                            [essid_h, mode_h],
+                            [bitrate_h, ap_h],
+                            [quality_h, draw],
+                            ]:
+                self.__add_row(table, cur_row, items)
+                cur_row += 1
 
         # statistics button
         if self.check_network_accounting(iface):
@@ -639,6 +627,12 @@ class MonitorGui:
             traf_vbox.pack_start(label, False, False)
 
         return traf_vbox
+
+    def __add_row(self, table, row, items, markup=False, wrap=False):
+        cur_pos = 1
+        for item in items:
+            table.attach(item, cur_pos - 1, cur_pos, row, row + 1, gtk.EXPAND | gtk.FILL, 0, 0, 0)
+            cur_pos += 1
 
     def build_widget_pair(self, container, w1, w2):
         """Puts two widgets side-by-side"""
