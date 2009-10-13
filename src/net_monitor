@@ -439,10 +439,10 @@ class MonitorGui:
                 histo_out = 0
             # update widgets
             ip, mac = self.monitor.get_address(iface)
-            for widget, value in [('widget_in', total_in),
-                                  ('widget_out', total_out),
-                                  ('widget_speed_in', speed_in),
-                                  ('widget_speed_out', speed_out),
+            for widget, value in [('widget_in', self.monitor.format_size(total_in)),
+                                  ('widget_out', self.monitor.format_size(total_out)),
+                                  ('widget_speed_in', self.monitor.format_size(speed_in, "/s")),
+                                  ('widget_speed_out', self.monitor.format_size(speed_out, "/s")),
                                   ('widget_ip_address', ip),
                                   ('widget_status', status),
                                   ('widget_hw_address', mac),
@@ -453,6 +453,13 @@ class MonitorGui:
                                   ('quality', "%d%%" % quality),
                                   ]:
                 if widget in self.ifaces[iface]:
+                    # is it absolute value or pretty-formatted number?
+                    if value.__class__ == tuple:
+                        pretty_size, pretty_bytes = value
+                        if pretty_size == pretty_bytes:
+                            value = pretty_size
+                        else:
+                            value = "%s (%s)" % (pretty_size, pretty_bytes)
                     self.ifaces[iface][widget].set_text(str(value))
         gobject.timeout_add(interval * 1000, self.update)
 

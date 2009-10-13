@@ -23,6 +23,11 @@ class Monitor:
     # wireless modes
     modes = ['Auto', 'Ad-Hoc', 'Managed', 'Master', 'Repeat', 'Second', 'Monitor']
 
+    # constants
+    SIZE_KB=1000
+    SIZE_MB=1000**2
+    SIZE_GB=1000**3
+
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.net = {}
@@ -161,9 +166,21 @@ class Monitor:
             bytes_out = 0
         return bytes_in, bytes_out
 
-    def format_size(self, size):
+    def format_size(self, size, opt=""):
         """Pretty-Formats size"""
-        return size
+        # convert to float
+        size_f = size * 1.0
+        pretty_size = None
+        pretty_bytes = "%d Bytes%s" % (size, opt)
+        if size > self.SIZE_GB:
+            pretty_size = "%0.2f GB%s" % (size_f / self.SIZE_GB, opt)
+        elif size > self.SIZE_MB:
+            pretty_size = "%0.2f MB%s" % (size_f / self.SIZE_MB, opt)
+        elif size > self.SIZE_KB:
+            pretty_size = "%0.2f KB%s" % (size_f / self.SIZE_KB, opt)
+        else:
+            pretty_size = pretty_bytes
+        return pretty_size, pretty_bytes
 
     def get_dns(self):
         """Returns list of DNS servers"""
