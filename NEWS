@@ -1,6 +1,7 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- prevent crashing when running for long time
 - pretty-format traffic data
 
 0.04:
