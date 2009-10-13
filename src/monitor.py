@@ -90,9 +90,8 @@ class Monitor:
 
     def get_status(self, ifname):
         try:
-            fd = open("/sys/class/net/%s/operstate" % ifname)
-            status = fd.readline().strip()
-            fd.close()
+            with open("/sys/class/net/%s/operstate" % ifname) as fd:
+                status = fd.readline().strip()
         except:
             status="unknown"
         if status == "unknown":
@@ -145,12 +144,16 @@ class Monitor:
     def readnet(self):
         """Reads values from /proc/net/dev"""
         net = {}
-        data = open("/proc/net/dev").readlines()[2:]
-        for l in data:
-            dev, vals = l.split(":")
-            dev = dev.strip()
-            vals = vals.split()
-            net[dev] = vals
+        try:
+            with open("/proc/net/dev") as fd:
+                data = fd.readlines()[2:]
+            for l in data:
+                dev, vals = l.split(":")
+                dev = dev.strip()
+                vals = vals.split()
+                net[dev] = vals
+        except:
+            traceback.print_exc()
         return net
 
     def get_traffic(self, iface, net=None):
