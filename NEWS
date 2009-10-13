@@ -1,6 +1,8 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- pretty-format traffic data
+
 0.04:
 - simplified UI
 
