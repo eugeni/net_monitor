@@ -291,6 +291,7 @@ static PyObject *
 
     /* Get AP address */
     err = iw_get_ext(fd, iface, SIOCGIWAP, &wrq);
+    close (fd);
 
     if (err < 0) {
         PyErr_SetFromErrno(PyExc_IOError);
