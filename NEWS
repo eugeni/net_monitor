@@ -1,6 +1,10 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.06:
+- support selecting default monitoring interface from command line
+- display interface icons when available
+
 0.05:
 - prevent crashing when running for long time
 - pretty-format traffic data
