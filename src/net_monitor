@@ -272,6 +272,8 @@ class LoadGraph:
             self.__colors[key] = value
 
 class MonitorGui:
+    # icon pattern - icons are pulled from drakx-net
+    ICON_PATTERN="/usr/share/libDrakX/pixmaps/%s-16.png"
     def __init__(self, default_iface=None):
         self.window = gtk.Window()
         self.window.set_title(_("Network monitor"))
@@ -312,8 +314,8 @@ class MonitorGui:
                               'histogram': [],
                               'address': "",
                               }
-            iface_stat = self.build_iface_stat(iface)
-            cur_page = self.notebook.append_page(iface_stat, gtk.Label(iface))
+            iface_stat, iface_label = self.build_iface_stat(iface)
+            cur_page = self.notebook.append_page(iface_stat, iface_label)
             if default_iface and iface == default_iface:
                 select_page = cur_page
             if self.check_network_accounting(iface):
@@ -641,7 +643,35 @@ class MonitorGui:
             label = gtk.Label("\n".join(textwrap.wrap(_("Network accounting is not enabled for this interface. Please enable it in Mandriva network center in order to view detailed traffic statistics"))))
             traf_vbox.pack_start(label, False, False)
 
-        return traf_vbox
+        # building notebook label icons
+        traf_label = gtk.HBox(False, 2)
+        if iface in self.wireless_ifaces:
+            # wifi
+            self.__load_interface_icon(traf_label, 'wireless')
+        elif iface[:3] == 'ppp':
+            # modem or peer-to-peer connection
+            self.__load_interface_icon(traf_label, 'potsmodem-24')
+        elif iface[:3] == 'eth':
+            # ethernet
+            self.__load_interface_icon(traf_label, 'ethernet')
+        elif iface[:3] == 'pan':
+            # ethernet
+            self.__load_interface_icon(traf_label, 'bluetooth')
+
+        traf_label.pack_start(gtk.Label(iface))
+        traf_label.show_all()
+
+        return traf_vbox, traf_label
+
+    def __load_interface_icon(self, widget, icon_title):
+        """Loads interface icon"""
+        try:
+            icon = gtk.Image()
+            pixbuf = gtk.gdk.pixbuf_new_from_file(self.ICON_PATTERN % icon_title)
+            icon.set_from_pixbuf(pixbuf)
+            widget.pack_start(icon)
+        except:
+            traceback.print_exc()
 
     def __add_row(self, table, row, items, markup=False, wrap=False):
         cur_pos = 1
