@@ -715,7 +715,7 @@ if __name__ == "__main__":
     iface = None
     # parse command line
     try:
-        opt, args = getopt.getopt(sys.argv[1:], 'hi:', ['help', 'defaultintf'])
+        opt, args = getopt.getopt(sys.argv[1:], 'hi:', ['help', 'defaultintf='])
     except getopt.error:
         usage()
         sys.exit(1)
