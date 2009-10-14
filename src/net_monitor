@@ -272,7 +272,7 @@ class LoadGraph:
             self.__colors[key] = value
 
 class MonitorGui:
-    def __init__(self):
+    def __init__(self, default_iface=None):
         self.window = gtk.Window()
         self.window.set_title(_("Network monitor"))
         self.window.set_default_size(640, 440)
@@ -297,6 +297,7 @@ class MonitorGui:
         sorted_ifaces.sort()
 
         net=self.monitor.readnet()
+        select_page=0
         for iface in sorted_ifaces:
             data_in, data_out = self.monitor.get_traffic(iface,net)
             self.ifaces[iface] = {'data_in': 0,
@@ -312,7 +313,9 @@ class MonitorGui:
                               'address': "",
                               }
             iface_stat = self.build_iface_stat(iface)
-            self.notebook.append_page(iface_stat, gtk.Label(iface))
+            cur_page = self.notebook.append_page(iface_stat, gtk.Label(iface))
+            if default_iface and iface == default_iface:
+                select_page = cur_page
             if self.check_network_accounting(iface):
                 self.enabled_ifaces.append(iface)
 
@@ -328,6 +331,10 @@ class MonitorGui:
         gobject.timeout_add(1000, self.update)
 
         self.window.show_all()
+
+        # do we have to select a default interface?
+        if select_page:
+            self.notebook.set_current_page(select_page)
 
     def update_tray_info(self):
         """Updates tray information"""
@@ -692,6 +699,31 @@ class MonitorGui:
         pixbuf = loader.get_pixbuf()
         return pixbuf
 
+# {{{ usage
+def usage():
+    """Prints help message"""
+    print """net_monitor: Mandriva network monitoring tool.
+
+Arguments to net_monitor:
+    -h, --help                displays this helpful message.
+    -i, --defaultintf <iface> start monitoring the specified interface
+"""
+# }}}
+
 if __name__ == "__main__":
-    monitor = MonitorGui()
+    # default monitoring interface
+    iface = None
+    # parse command line
+    try:
+        opt, args = getopt.getopt(sys.argv[1:], 'hi:', ['help', 'defaultintf'])
+    except getopt.error:
+        usage()
+        sys.exit(1)
+    for o in opt:
+        if o[0] == '-h' or o[0] == '--help':
+            usage()
+            sys.exit(0)
+        elif o[0] == '-i' or o[0] == '--defaultintf':
+            iface = o[1]
+    monitor = MonitorGui(default_iface=iface)
     gtk.main()
