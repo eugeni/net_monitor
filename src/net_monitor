@@ -518,7 +518,7 @@ class MonitorGui:
             button.connect('toggled', self.update_stat_iface, (iface, graph_vnstat, "top"))
             vbox.pack_start(button, False, False)
         else:
-            label = gtk.Label(_("Network accounting was not enabled on interface %s.\nPlease enable network accounting on the interface in order to view traffic statistics."))
+            label = gtk.Label(_("Network accounting was not enabled on interface %s.\nPlease enable network accounting on the interface in order to view traffic statistics and restart your network connection to start collecting traffic statistics."))
             stats_vbox.add(label)
 
         stats_vbox.show_all()
