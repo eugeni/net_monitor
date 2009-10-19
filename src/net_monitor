@@ -650,7 +650,7 @@ class MonitorGui:
             self.__load_interface_icon(traf_label, 'wireless')
         elif iface[:3] == 'ppp':
             # modem or peer-to-peer connection
-            self.__load_interface_icon(traf_label, 'potsmodem-24')
+            self.__load_interface_icon(traf_label, 'potsmodem')
         elif iface[:3] == 'eth':
             # ethernet
             self.__load_interface_icon(traf_label, 'ethernet')
