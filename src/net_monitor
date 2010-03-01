@@ -18,6 +18,8 @@ import fcntl
 import struct
 
 import time
+import signal
+import Queue
 
 import textwrap
 
@@ -295,6 +297,9 @@ class MonitorGui:
         self.enabled_ifaces = []
         self.wireless_ifaces = filter(self.monitor.has_wireless, self.ifaces.keys())
 
+        # load uptime log
+        self.monitor.load_uptime_log()
+
         sorted_ifaces = self.ifaces.keys()
         sorted_ifaces.sort()
 
@@ -330,6 +335,7 @@ class MonitorGui:
         self.statusbar.push(self.context_id, _("Please wait.."))
 
         # configure timer
+        self.signals = Queue.Queue()
         gobject.timeout_add(1000, self.update)
 
         self.window.show_all()
@@ -357,6 +363,8 @@ class MonitorGui:
 
     def update(self, interval=1):
         """Updates traffic counters (interval is in seconds)"""
+        # check for pending signals
+        self.check_signals()
         # TODO: move it to Monitor()?
         net=self.monitor.readnet()
         wifi_stats = self.monitor.wireless_stats()
@@ -446,6 +454,8 @@ class MonitorGui:
                 histo_out = reduce(lambda x, y: x+y, hist_out) / len(hist_in)
             else:
                 histo_out = 0
+            # get the uptime
+            uptime = self.monitor.get_uptime(iface)
             # update widgets
             ip, mac = self.monitor.get_address(iface)
             for widget, value in [('widget_in', self.monitor.format_size(total_in)),
@@ -460,6 +470,7 @@ class MonitorGui:
                                   ('widget_bitrate', bitrate),
                                   ('widget_ap', ap),
                                   ('quality', "%d%%" % quality),
+                                  ('widget_uptime', uptime),
                                   ]:
                 if widget in self.ifaces[iface]:
                     # is it absolute value or pretty-formatted number?
@@ -591,7 +602,7 @@ class MonitorGui:
         # pack items into table
         for items in [
                         [iface_h, iface_addr_s],
-                        [iface_s, iface_mac_s]
+                        [iface_s, iface_mac_s],
                         ]:
             self.__add_row(table, cur_row, items)
             cur_row += 1
@@ -637,13 +648,20 @@ class MonitorGui:
                 cur_row += 1
 
         # statistics button
+        frame_accounting = gtk.Frame(_("Traffic accounting"))
+        vbox = gtk.VBox()
+        frame_accounting.add(vbox)
         if self.check_network_accounting(iface):
+            iface_u, iface_uptime = self.build_value_pair(sizegroup1, _("Connection time:"))
+            self.ifaces[iface]["widget_uptime"] = iface_uptime
+            vbox.pack_start(iface_u, False, False)
             button = gtk.Button(_("Show detailed network statistics"))
             button.connect('clicked', self.show_statistics_dialog, iface)
-            traf_vbox.pack_start(button, False, False)
+            vbox.pack_start(button, False, False)
         else:
             label = gtk.Label("\n".join(textwrap.wrap(_("Network accounting is not enabled for this interface. Please enable it in Mandriva network center in order to view detailed traffic statistics"))))
-            traf_vbox.pack_start(label, False, False)
+            vbox.pack_start(label, False, False)
+        traf_vbox.pack_start(frame_accounting, False, False)
 
         # building notebook label icons
         traf_label = gtk.HBox(False, 2)
@@ -733,6 +751,18 @@ class MonitorGui:
         pixbuf = loader.get_pixbuf()
         return pixbuf
 
+    def check_signals(self):
+        """Checks for received signals"""
+        if not self.signals.empty():
+            s = self.signals.get()
+            if s == signal.SIGHUP:
+                # reload network configuration
+                self.monitor.load_uptime_log()
+
+    def queue_update(self, s):
+        """Queue update for network devices"""
+        self.signals.put(s)
+
 # {{{ usage
 def usage():
     """Prints help message"""
@@ -760,4 +790,5 @@ if __name__ == "__main__":
         elif o[0] == '-i' or o[0] == '--defaultintf':
             iface = o[1]
     monitor = MonitorGui(default_iface=iface)
+    signal.signal(signal.SIGHUP, lambda s, f: monitor.queue_update(s))
     gtk.main()

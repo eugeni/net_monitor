@@ -7,6 +7,7 @@ import fcntl
 import struct
 import traceback
 import array
+import time
 
 # native library implements a few bits
 import _native
@@ -14,6 +15,9 @@ import _native
 
 class Monitor:
     # based on http://svn.pardus.org.tr/pardus/tags/pardus-1.0/system/base/wireless-tools/comar/link.py
+
+    # network uptime log file
+    LOGFILE="/var/log/net_monitor.log"
 
     # wireless IOCTL constants
     SIOCGIWMODE = 0x8B07    # get operation mode
@@ -31,6 +35,7 @@ class Monitor:
     def __init__(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.net = {}
+        self.uptime_log = {}
 
     def ioctl(self, func, params):
         return fcntl.ioctl(self.sock.fileno(), func, params)
@@ -231,3 +236,68 @@ class Monitor:
             pass
         return routes, default_routes
 
+    def load_uptime_log(self):
+        """Loads network uptime log, handled by /etc/sysconfig/network-scripts/if{up,down}.d/netprofile*"""
+        self.uptime_log = {}
+        if not os.access(self.LOGFILE, os.F_OK):
+            # no log file
+            return
+        with open(self.LOGFILE) as fd:
+            data = fd.readlines()
+
+        for l in data:
+            dev, status, secs = l.strip().split(":")
+            secs = int(secs)
+            if dev not in self.uptime_log:
+                self.uptime_log[dev] = {"uptime": None, "log": []}
+            self.uptime_log[dev]["log"].append((secs, status))
+
+        # now reload the last uptime data
+        for i in self.uptime_log:
+            self.calc_uptime(i)
+
+    def calc_uptime(self, iface):
+        """Calculates uptime data for an interface"""
+        if iface not in self.uptime_log:
+            self.uptime_log[iface]["uptime"] = -1
+            return
+        # ok, interface is there, calculate last uptime status
+        last_up=0
+        last_down=0
+        for s, status in self.uptime_log[iface]["log"]:
+            if status == "UP":
+                last_up = s
+            elif status == "DOWN":
+                last_down = s
+
+        # now get the uptime
+        # is the device up and running?
+        if not last_up:
+            self.uptime_log[iface]["uptime"] = -1
+            return
+
+        # was the interface disconnected?
+        if last_down > last_up:
+            self.uptime_log[iface]["uptime"] = 0
+            return
+
+        # ok, we are up and running, lets get the uptime
+        self.uptime_log[iface]["uptime"] = last_up
+
+    def get_uptime(self, iface):
+        """Determines interface uptime"""
+        if iface not in self.uptime_log:
+            return _("Unknown")
+        uptime = self.uptime_log[iface]["uptime"]
+        if uptime < 0:
+            return _("Unknown")
+        elif uptime == 0:
+            # device is offline
+            return _("Device is offline")
+        else:
+            curtime = int(time.time())
+            uptime = curtime - uptime
+            mins = uptime / 60.0
+            hours = mins / 60.0
+            secs = uptime % 60
+            return _("%d hours, %d minutes, %d seconds") % (hours, mins, secs)
