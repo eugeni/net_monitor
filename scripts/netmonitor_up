@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+# simple log the time when connection was started
+#
+
+if [ -r /etc/sysconfig/network-scripts/ifcfg-$1 ]; then
+	. /etc/sysconfig/network-scripts/ifcfg-$1
+	if [ "a$ACCOUNTING" = "ayes" ]; then
+		echo $1:UP:$(date +%s) >> /var/log/net_monitor
+	fi
+fi

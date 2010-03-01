@@ -1,6 +1,8 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- added ifup.d and ifdown.d scripts for account network uptime
+
 0.06:
 - support selecting default monitoring interface from command line
 - display interface icons when available
