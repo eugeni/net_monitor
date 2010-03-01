@@ -15,6 +15,10 @@ clean:
 
 install: all
 	python setup.py install --root=$(RPM_BUILD_ROOT)
+	install -d /etc/sysconfig/network-scripts/ifup.d
+	install -d /etc/sysconfig/network-scripts/ifdown.d
+	install -m755 scripts/netmonitor_up $(RPM_BUILD_ROOT)/etc/sysconfig/network-scripts/ifup.d/
+	install -m755 scripts/netmonitor_down $(RPM_BUILD_ROOT)/etc/sysconfig/network-scripts/ifdown.d/
 
 cleandist:
 	rm -rf $(PACKAGE)-$(VERSION) $(PACKAGE)-$(VERSION).tar.bz2
