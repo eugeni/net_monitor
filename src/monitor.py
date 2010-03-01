@@ -8,7 +8,7 @@ import struct
 import traceback
 import array
 
-# native librari implements a few bits
+# native library implements a few bits
 import _native
 
 
