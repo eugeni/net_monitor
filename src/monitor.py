@@ -89,6 +89,7 @@ class Monitor:
             return 0
 
     def get_status(self, ifname):
+        """Determines interface status"""
         try:
             with open("/sys/class/net/%s/operstate" % ifname) as fd:
                 status = fd.readline().strip()
@@ -125,6 +126,7 @@ class Monitor:
         return os.access("/sys/class/net/%s/wireless" % iface, os.R_OK)
 
     def get_address(self, ifname):
+        """Get MAC address of a card"""
         mac=_("No physical address")
         # ip address
         try:
@@ -157,6 +159,7 @@ class Monitor:
         return net
 
     def get_traffic(self, iface, net=None):
+        """Get traffic information"""
         if not net:
             if not self.net:
                 self.readnet()
