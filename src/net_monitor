@@ -542,6 +542,8 @@ class MonitorGui:
         # configuring callbacks
         sizegroup1 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
         sizegroup2 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        sizegroup3 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
+        sizegroup4 = gtk.SizeGroup(gtk.SIZE_GROUP_HORIZONTAL)
 
         # traffic
         frame = gtk.Frame(_("Traffic statistics"))
@@ -551,15 +553,15 @@ class MonitorGui:
         frame.add(table)
         cur_row = 0
 
-        total_in_h, total_in = self.build_value_pair(sizegroup1, _("Downloaded:"))
+        total_in_h, total_in = self.build_value_pair(sizegroup1, _("Downloaded:"), value_sizegroup=sizegroup2)
         self.ifaces[iface]["widget_in"] = total_in
-        total_out_h, total_out = self.build_value_pair(sizegroup2, _("Uploaded:"))
+        total_out_h, total_out = self.build_value_pair(sizegroup3, _("Uploaded:"), value_sizegroup=sizegroup4)
         self.ifaces[iface]["widget_out"] = total_out
 
         # speed
-        speed_in_h, speed_in = self.build_value_pair(sizegroup1, _("Download speed:"))
+        speed_in_h, speed_in = self.build_value_pair(sizegroup1, _("Download speed:"), value_sizegroup=sizegroup2)
         self.ifaces[iface]["widget_speed_in"] = speed_in
-        speed_out_h, speed_out = self.build_value_pair(sizegroup2, _("Upload speed:"))
+        speed_out_h, speed_out = self.build_value_pair(sizegroup3, _("Upload speed:"), value_sizegroup=sizegroup4)
         self.ifaces[iface]["widget_speed_out"] = speed_out
 
         # pack items into table
@@ -578,12 +580,12 @@ class MonitorGui:
         cur_row = 0
 
         # interface
-        iface_h, iface_p = self.build_value_pair(sizegroup1, _("Network interface:"), iface)
-        iface_s, iface_status = self.build_value_pair(sizegroup1, _("Device status:"))
+        iface_h, iface_p = self.build_value_pair(sizegroup1, _("Network interface:"), iface, value_sizegroup=sizegroup2)
+        iface_s, iface_status = self.build_value_pair(sizegroup1, _("Device status:"), value_sizegroup=sizegroup2)
         self.ifaces[iface]["widget_status"] = iface_status
-        iface_addr_s, iface_addr = self.build_value_pair(sizegroup2, _("IP Address:"))
+        iface_addr_s, iface_addr = self.build_value_pair(sizegroup3, _("IP Address:"), value_sizegroup=sizegroup4)
         self.ifaces[iface]["widget_ip_address"] = iface_addr
-        iface_mac_s, iface_mac = self.build_value_pair(sizegroup2, _("Hardware address:"))
+        iface_mac_s, iface_mac = self.build_value_pair(sizegroup3, _("Hardware address:"), value_sizegroup=sizegroup4)
         self.ifaces[iface]["widget_hw_address"] = iface_mac
 
         # pack items into table
@@ -597,24 +599,24 @@ class MonitorGui:
         # wireless statistics
         if iface in self.wireless_ifaces:
             # essid
-            essid_h, essid = self.build_value_pair(sizegroup1, _("Wireless ESSID:"))
+            essid_h, essid = self.build_value_pair(sizegroup1, _("Wireless ESSID:"), value_sizegroup=sizegroup2)
             self.ifaces[iface]["widget_essid"] = essid
             # mode
-            mode_h, mode = self.build_value_pair(sizegroup2, _("Wireless mode:"))
+            mode_h, mode = self.build_value_pair(sizegroup3, _("Wireless mode:"), value_sizegroup=sizegroup4)
             self.ifaces[iface]["widget_mode"] = mode
 
             # bitrate
-            bitrate_h, bitrate = self.build_value_pair(sizegroup1, _("Connection speed:"))
+            bitrate_h, bitrate = self.build_value_pair(sizegroup1, _("Connection speed:"), value_sizegroup=sizegroup2)
             self.ifaces[iface]["widget_bitrate"] = bitrate
             # AP
-            ap_h, ap = self.build_value_pair(sizegroup2, _("Access point or cell:"))
+            ap_h, ap = self.build_value_pair(sizegroup3, _("Access point or cell:"), value_sizegroup=sizegroup4)
             self.ifaces[iface]["widget_ap"] = ap
 
             # caching quality values
             self.ifaces[iface]["max_quality"] = self.monitor.wifi_get_max_quality(iface)
 
             # link quality info
-            quality_h, quality = self.build_value_pair(sizegroup1, _("Link quality:"))
+            quality_h, quality = self.build_value_pair(sizegroup1, _("Link quality:"), value_sizegroup=sizegroup2)
             self.ifaces[iface]["quality"] = quality
 
             # link quality graph
@@ -686,7 +688,7 @@ class MonitorGui:
         vbox_left.pack_start(w1, False, False)
         vbox_right.pack_start(w2, False, False)
 
-    def build_value_pair(self, sizegroup, text, value_text=None):
+    def build_value_pair(self, sizegroup, text, value_text=None, value_sizegroup=None):
         """Builds a value pair"""
         hbox = gtk.HBox(spacing=10)
         name = gtk.Label(text)
@@ -697,6 +699,8 @@ class MonitorGui:
         hbox.pack_start(value, False, False)
         if sizegroup:
             sizegroup.add_widget(name)
+        if value_sizegroup:
+            value_sizegroup.add_widget(value)
         return hbox, value
 
     def update_stat_iface(self, widget, data):
