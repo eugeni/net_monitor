@@ -336,7 +336,7 @@ class MonitorGui:
 
         # configure timer
         self.signals = Queue.Queue()
-        gobject.timeout_add(1000, self.update)
+        gobject.timeout_add_seconds(1, self.update)
 
         self.window.show_all()
 
@@ -481,7 +481,7 @@ class MonitorGui:
                         else:
                             value = "%s (%s)" % (pretty_size, pretty_bytes)
                     self.ifaces[iface][widget].set_text(str(value))
-        gobject.timeout_add(interval * 1000, self.update)
+        gobject.timeout_add_seconds(interval, self.update)
 
     def check_network_accounting(self, iface):
         """Checks if network accounting was enabled on interface"""
