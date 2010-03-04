@@ -1,6 +1,8 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- modified timeouts to improve system power usage
+
 0.07:
 - implement connection uptime monitoring in GUI
 - added ifup.d and ifdown.d scripts for account network uptime
