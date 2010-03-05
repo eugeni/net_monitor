@@ -297,7 +297,7 @@ class Monitor:
         else:
             curtime = int(time.time())
             uptime = curtime - uptime
-            mins = uptime / 60.0
-            hours = mins / 60.0
+            hours = uptime / 3600
+            mins = (uptime - (hours * 3600)) / 60
             secs = uptime % 60
-            return _("%d hours, %d minutes, %d seconds") % (hours, mins, secs)
+            return _("%d: %d hours, %d minutes, %d seconds") % (uptime, hours, mins, secs)
