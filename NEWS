@@ -1,6 +1,7 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- properly calculate network uptime
 - modified timeouts to improve system power usage
 
 0.07:
