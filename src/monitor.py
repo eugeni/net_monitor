@@ -300,4 +300,4 @@ class Monitor:
             hours = uptime / 3600
             mins = (uptime - (hours * 3600)) / 60
             secs = uptime % 60
-            return _("%d: %d hours, %d minutes, %d seconds") % (uptime, hours, mins, secs)
+            return _("%d hours, %d minutes, %d seconds") % (hours, mins, secs)
