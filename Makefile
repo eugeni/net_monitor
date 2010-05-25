@@ -1,5 +1,5 @@
 PACKAGE = net_monitor
-VERSION = 0.07
+VERSION = 0.08
 GITPATH = ssh://git.mandriva.com/git/projects/net_monitor.git
 
 all: version python
