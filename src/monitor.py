@@ -225,7 +225,7 @@ class Monitor:
                 iface = params[0]
                 dst = int(params[1], 16)
                 gw = int(params[2], 16)
-                gw_str = socket.inet_ntoa(struct.pack("L", gw))
+                gw_str = socket.inet_ntoa(struct.pack("i", gw))
                 metric = int(params[6], 16)
                 mask = int(params[7], 16)
                 routes.append((iface, dst, mask, gw, metric))
