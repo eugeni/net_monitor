@@ -276,6 +276,7 @@ class LoadGraph:
 class MonitorGui:
     # icon pattern - icons are pulled from drakx-net
     ICON_PATTERN="/usr/share/libDrakX/pixmaps/%s-16.png"
+    ICON_CONNECTED="/usr/share/libDrakX/pixmaps/connected.png"
     (COLUMN_PROTO, COLUMN_LOC_ADDR, COLUMN_LOC_PORT, COLUMN_REM_ADDR, COLUMN_REM_PORT, COLUMN_STATUS) = range(6)
     def __init__(self, default_iface=None):
         self.window = gtk.Window()
@@ -328,8 +329,8 @@ class MonitorGui:
                 self.enabled_ifaces.append(iface)
 
         # finally, we have tabs for network connections
-        network_stat, self.connections = self.build_network_stat()
-        cur_page = self.notebook.append_page(network_stat, gtk.Label(_("Connections")))
+        network_stat_label, network_stat, self.connections = self.build_network_stat()
+        cur_page = self.notebook.append_page(network_stat, network_stat_label)
 
         # global statusbar
         self.statusbar = gtk.Statusbar()
@@ -600,7 +601,19 @@ class MonitorGui:
         # refresh connections
         self.refresh_connections(lstore)
 
-        return sw, lstore
+        # build tab label
+        widget = gtk.HBox()
+        try:
+            icon = gtk.Image()
+            pixbuf = gtk.gdk.pixbuf_new_from_file(self.ICON_CONNECTED)
+            icon.set_from_pixbuf(pixbuf)
+            widget.pack_start(icon)
+        except:
+            traceback.print_exc()
+        widget.pack_start(gtk.Label(_("connections")))
+        widget.show_all()
+
+        return widget, sw, lstore
 
     def build_iface_stat(self, iface):
         """Builds graphical view for interface"""
