@@ -330,6 +330,9 @@ class MonitorGui:
 
         # finally, we have tabs for network connections
         network_stat_label, network_stat, self.connections = self.build_network_stat()
+        # refresh current connections
+        self.refresh_connections(None)
+
         cur_page = self.notebook.append_page(network_stat, network_stat_label)
 
         # global statusbar
@@ -544,8 +547,9 @@ class MonitorGui:
         ret = dialog.run()
         dialog.destroy()
 
-    def refresh_connections(self, lstore):
+    def refresh_connections(self, widget):
         """Updates connections"""
+        lstore = self.connections
         lstore.clear()
         for proto in ["tcp", "udp"]:
             connections = self.monitor.get_connections(proto=proto)
@@ -598,9 +602,6 @@ class MonitorGui:
 
         sw.add(treeview)
 
-        # refresh connections
-        self.refresh_connections(lstore)
-
         # build tab label
         widget = gtk.HBox()
         try:
@@ -613,7 +614,13 @@ class MonitorGui:
         widget.pack_start(gtk.Label(_("connections")))
         widget.show_all()
 
-        return widget, sw, lstore
+        vbox.pack_start(sw)
+
+        button = gtk.Button(_("Refresh"))
+        button.connect('clicked', self.refresh_connections)
+        vbox.pack_start(button, False, False)
+
+        return widget, vbox, lstore
 
     def build_iface_stat(self, iface):
         """Builds graphical view for interface"""
