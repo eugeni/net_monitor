@@ -27,6 +27,37 @@ class Monitor:
     # wireless modes
     modes = ['Auto', 'Ad-Hoc', 'Managed', 'Master', 'Repeat', 'Second', 'Monitor']
 
+    # tcp statuses
+    netstats = {"tcp": [
+                "",
+                _("ESTABLISHED"),
+                _("SYN_SENT"),
+                _("SYN_RECV"),
+                _("FIN_WAIT1"),
+                _("FIN_WAIT2"),
+                _("TIME_WAIT"),
+                _("CLOSE"),
+                _("CLOSE_WAIT"),
+                _("LAST_ACK"),
+                _("LISTEN"),
+                _("CLOSING")
+                ],
+            "udp": [
+                "",
+                _("ESTABLISHED"),
+                _("SYN_SENT"),
+                _("SYN_RECV"),
+                _("FIN_WAIT1"),
+                _("FIN_WAIT2"),
+                _("TIME_WAIT"),
+                "",
+                _("CLOSE_WAIT"),
+                _("LAST_ACK"),
+                _("LISTEN"),
+                _("CLOSING")
+                ],
+            }
+
     # constants
     SIZE_KB=1000
     SIZE_MB=1000**2
@@ -259,6 +290,10 @@ class Monitor:
             traceback.print_exc()
             return connections
 
+        if proto in self.netstats:
+            netstats = self.netstats[proto]
+        else:
+            netstats = None
         # parse connections
         for l in data:
             fields = l.strip().split()
@@ -271,7 +306,13 @@ class Monitor:
             loc_port = (int(loc_p, 16))
             rem_addr = socket.inet_ntoa(struct.pack('i', int(rem_a, 16)))
             rem_port = (int(rem_p, 16))
-            connections.append((loc_addr, loc_port, rem_addr, rem_port, status))
+            # parse status
+            status = int(status, 16)
+            status_s = _("Unknown")
+            if netstats:
+                if status < len(netstats):
+                    status_s = netstats[status]
+            connections.append((loc_addr, loc_port, rem_addr, rem_port, status_s))
         return connections
 
     def load_uptime_log(self):
