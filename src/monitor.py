@@ -236,6 +236,32 @@ class Monitor:
             pass
         return routes, default_routes
 
+    def get_connections(self, proto="tcp"):
+        """Reads active connections"""
+        connections=[]
+        try:
+            with open("/proc/net/%s" % proto) as fd:
+                data = fd.readlines()[1:]
+        except:
+            # unable to read connections
+            traceback.print_exc()
+            return connections
+
+        # parse connections
+        for l in data:
+            fields = l.strip().split()
+            loc=fields[1]
+            rem=fields[2]
+            status=fields[3]
+            loc_a,loc_p = loc.split(":")
+            rem_a,rem_p = rem.split(":")
+            loc_addr = socket.inet_ntoa(struct.pack('i', int(loc_a, 16)))
+            loc_port = (int(loc_p, 16))
+            rem_addr = socket.inet_ntoa(struct.pack('i', int(rem_a, 16)))
+            rem_port = (int(rem_p, 16))
+            connections.append((loc_addr, loc_port, rem_addr, rem_port, status))
+        return connections
+
     def load_uptime_log(self):
         """Loads network uptime log, handled by /etc/sysconfig/network-scripts/if{up,down}.d/netprofile*"""
         self.uptime_log = {}
