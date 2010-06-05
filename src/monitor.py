@@ -268,7 +268,7 @@ class Monitor:
                 iface = params[0]
                 dst = int(params[1], 16)
                 gw = int(params[2], 16)
-                gw_str = socket.inet_ntoa(struct.pack("i", gw))
+                gw_str = socket.inet_ntoa(struct.pack("I", gw))
                 metric = int(params[6], 16)
                 mask = int(params[7], 16)
                 routes.append((iface, dst, mask, gw, metric))
@@ -302,9 +302,9 @@ class Monitor:
             status=fields[3]
             loc_a,loc_p = loc.split(":")
             rem_a,rem_p = rem.split(":")
-            loc_addr = socket.inet_ntoa(struct.pack('i', int(loc_a, 16)))
+            loc_addr = socket.inet_ntoa(struct.pack('I', int(loc_a, 16)))
             loc_port = (int(loc_p, 16))
-            rem_addr = socket.inet_ntoa(struct.pack('i', int(rem_a, 16)))
+            rem_addr = socket.inet_ntoa(struct.pack('I', int(rem_a, 16)))
             rem_port = (int(rem_p, 16))
             # parse status
             status = int(status, 16)
