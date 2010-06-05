@@ -276,6 +276,7 @@ class LoadGraph:
 class MonitorGui:
     # icon pattern - icons are pulled from drakx-net
     ICON_PATTERN="/usr/share/libDrakX/pixmaps/%s-16.png"
+    (COLUMN_PROTO, COLUMN_LOC_ADDR, COLUMN_LOC_PORT, COLUMN_REM_ADDR, COLUMN_REM_PORT, COLUMN_STATUS) = range(6)
     def __init__(self, default_iface=None):
         self.window = gtk.Window()
         self.window.set_title(_("Network monitor"))
@@ -325,6 +326,10 @@ class MonitorGui:
                 select_page = cur_page
             if self.check_network_accounting(iface):
                 self.enabled_ifaces.append(iface)
+
+        # finally, we have tabs for network connections
+        network_stat, self.connections = self.build_network_stat()
+        cur_page = self.notebook.append_page(network_stat, gtk.Label(_("Connections")))
 
         # global statusbar
         self.statusbar = gtk.Statusbar()
@@ -537,6 +542,65 @@ class MonitorGui:
         stats_vbox.show_all()
         ret = dialog.run()
         dialog.destroy()
+
+    def refresh_connections(self, lstore):
+        """Updates connections"""
+        lstore.clear()
+        for proto in ["tcp", "udp"]:
+            connections = self.monitor.get_connections(proto=proto)
+            for loc_addr, loc_port, rem_addr, rem_port, status in connections:
+                iter = lstore.append()
+                lstore.set(iter,
+                        self.COLUMN_PROTO, proto,
+                        self.COLUMN_LOC_ADDR, loc_addr,
+                        self.COLUMN_LOC_PORT, loc_port,
+                        self.COLUMN_REM_ADDR, rem_addr,
+                        self.COLUMN_REM_PORT, rem_port,
+                        self.COLUMN_STATUS, status)
+
+
+    def build_network_stat(self):
+        """Builds graphical view for connections"""
+        vbox = gtk.VBox()
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+
+        lstore = gtk.ListStore(
+                gobject.TYPE_STRING,
+                gobject.TYPE_STRING,
+                gobject.TYPE_INT,
+                gobject.TYPE_STRING,
+                gobject.TYPE_INT,
+                gobject.TYPE_STRING
+                )
+        treeview = gtk.TreeView(lstore)
+        treeview.set_rules_hint(True)
+        treeview.set_search_column(self.COLUMN_LOC_ADDR)
+
+        # treeview.connect('row-activated', self.expand_domain, lstore)
+
+        # now building columns
+        for c, descr in [
+                (self.COLUMN_PROTO, _("Protocol")),
+                (self.COLUMN_LOC_ADDR, _("Local address")),
+                (self.COLUMN_LOC_PORT, _("Local port")),
+                (self.COLUMN_REM_ADDR, _("Remote address")),
+                (self.COLUMN_REM_PORT, _("Remote port")),
+                (self.COLUMN_STATUS, _("Connection status")) ]:
+            renderer = gtk.CellRendererText()
+            column = gtk.TreeViewColumn(descr, renderer, text=c)
+            column.set_sort_column_id(c)
+            column.set_resizable(True)
+            column.set_expand(True)
+            treeview.append_column(column)
+
+        sw.add(treeview)
+
+        # refresh connections
+        self.refresh_connections(lstore)
+
+        return sw, lstore
 
     def build_iface_stat(self, iface):
         """Builds graphical view for interface"""
