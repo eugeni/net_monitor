@@ -54,11 +54,22 @@ class Monitor:
 
     def wifi_get_max_quality(self, iface):
         """Gets maximum quality value"""
-        return _native.wifi_get_max_quality(iface)
+        try:
+            ret = _native.wifi_get_max_quality(iface)
+            return ret
+        except:
+            traceback.print_exc()
+            return _("Unknown")
 
     def wifi_get_ap(self, iface):
         """Gets access point address"""
         return _native.wifi_get_ap(iface)
+        try:
+            ret = _native.wifi_get_ap(iface)
+            return ret
+        except:
+            traceback.print_exc()
+            return _("Unknown")
 
     def wifi_get_essid(self, iface):
         """Get current essid for an interface"""
