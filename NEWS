@@ -1,6 +1,7 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.09:
 - add support for displaying network connections
 - fix handling unsupported network card parameters
 
