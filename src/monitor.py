@@ -58,17 +58,18 @@ class Monitor:
             ret = _native.wifi_get_max_quality(iface)
             return ret
         except:
-            traceback.print_exc()
+            # TODO: this happens when the card does not supports the settings
+            # but maybe we could log it somewhere..
             return _("Unknown")
 
     def wifi_get_ap(self, iface):
         """Gets access point address"""
-        return _native.wifi_get_ap(iface)
         try:
             ret = _native.wifi_get_ap(iface)
             return ret
         except:
-            traceback.print_exc()
+            # TODO: this happens when the card does not supports the settings
+            # but maybe we could log it somewhere..
             return _("Unknown")
 
     def wifi_get_essid(self, iface):
