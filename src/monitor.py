@@ -208,17 +208,19 @@ class Monitor:
 
     def get_traffic(self, iface, net=None):
         """Get traffic information"""
+        device_exists=False
         if not net:
             if not self.net:
                 self.readnet()
             net = self.net
         if iface in net:
+            device_exists=True
             bytes_in = int(net[iface][0])
             bytes_out = int(net[iface][8])
         else:
             bytes_in = 0
             bytes_out = 0
-        return bytes_in, bytes_out
+        return device_exists, bytes_in, bytes_out
 
     def format_size(self, size, opt=""):
         """Pretty-Formats size"""

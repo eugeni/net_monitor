@@ -308,7 +308,7 @@ class MonitorGui:
         net=self.monitor.readnet()
         select_page=0
         for iface in sorted_ifaces:
-            data_in, data_out = self.monitor.get_traffic(iface,net)
+            device_exists, data_in, data_out = self.monitor.get_traffic(iface,net)
             self.ifaces[iface] = {'data_in': 0,
                               'data_out': 0,
                               'total_in': 0,
@@ -384,7 +384,7 @@ class MonitorGui:
             old_data_out = self.ifaces[iface]['data_out']
             total_in = self.ifaces[iface]['total_in']
             total_out = self.ifaces[iface]['total_out']
-            data_in, data_out = self.monitor.get_traffic(iface, net)
+            device_exists, data_in, data_out = self.monitor.get_traffic(iface, net)
             # is it a wireless interface?
             if iface in self.wireless_ifaces:
                 essid = self.monitor.wifi_get_essid(iface)
@@ -409,6 +409,10 @@ class MonitorGui:
                 quality = 0
             # is it the first measure?
             if old_data_in == 0 and old_data_out == 0:
+                old_data_in = data_in
+                old_data_out = data_out
+            # check if device exists
+            if not device_exists:
                 old_data_in = data_in
                 old_data_out = data_out
             # check total download
