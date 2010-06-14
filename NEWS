@@ -1,6 +1,9 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.10:
+- properly check for /var/log/net_monitor.log permissions (#59777)
+
 0.09:
 - add support for displaying network connections
 - fix handling unsupported network card parameters
