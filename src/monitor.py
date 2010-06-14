@@ -318,7 +318,7 @@ class Monitor:
     def load_uptime_log(self):
         """Loads network uptime log, handled by /etc/sysconfig/network-scripts/if{up,down}.d/netprofile*"""
         self.uptime_log = {}
-        if not os.access(self.LOGFILE, os.F_OK):
+        if not os.access(self.LOGFILE, os.R_OK):
             # no log file
             return
         with open(self.LOGFILE) as fd:
