@@ -1,6 +1,9 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+0.11:
+- properly check if device dissapears (#57108)
+
 0.10:
 - properly check for /var/log/net_monitor.log permissions (#59777)
 
