@@ -1,6 +1,10 @@
 Mandriva network monitoring tool -- History of user-visible changes
 Copyright (C) 2009, Mandriva
 
+- properly check for network accounting
+- allow to be properly installed on rpm-less systems
+- add kde plasma plugin
+
 0.11:
 - properly check if device dissapears (#57108)
 
