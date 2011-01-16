@@ -1,0 +1,17 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Network Monitor data source
+Type=Service
+ServiceTypes=Plasma/DataEngine
+Icon=chronometer
+X-Plasma-API=python
+X-Plasma-MainScript=code/main.py
+X-KDE-PluginInfo-Author=Eugeni Dodonov
+X-KDE-PluginInfo-Email=eugeni@mandriva.com
+X-KDE-PluginInfo-Name=net_monitor_data
+X-KDE-PluginInfo-Version=1.0
+X-KDE-PluginInfo-Website=http://git.mandriva.com/
+X-KDE-PluginInfo-Category=Network
+X-KDE-PluginInfo-Depends=
+X-KDE-PluginInfo-License=GPL
+X-KDE-PluginInfo-EnabledByDefault=true
