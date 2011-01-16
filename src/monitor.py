@@ -12,6 +12,13 @@ import time
 # native library implements a few bits
 import _native
 
+# localization
+import gettext
+try:
+    gettext.install("net_monitor")
+except IOError:
+    _ = str
+
 
 class Monitor:
     # based on http://svn.pardus.org.tr/pardus/tags/pardus-1.0/system/base/wireless-tools/comar/link.py
