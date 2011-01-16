@@ -325,7 +325,7 @@ class MonitorGui:
             cur_page = self.notebook.append_page(iface_stat, iface_label)
             if default_iface and iface == default_iface:
                 select_page = cur_page
-            if self.check_network_accounting(iface):
+            if self.monitor.check_network_accounting(iface):
                 self.enabled_ifaces.append(iface)
 
         # finally, we have tabs for network connections
@@ -496,14 +496,6 @@ class MonitorGui:
                     self.ifaces[iface][widget].set_text(str(value))
         gobject.timeout_add_seconds(interval, self.update)
 
-    def check_network_accounting(self, iface):
-        """Checks if network accounting was enabled on interface"""
-        try:
-            os.stat("/var/lib/vnstat/%s" % iface)
-            return True
-        except:
-            return False
-
     def show_statistics_dialog(self, widget, iface):
         """Shows statistics dialog"""
         dialog = gtk.Dialog(_("Network statistics for %s") % iface,
@@ -512,7 +504,7 @@ class MonitorGui:
                 )
         # statistics vbox
         stats_vbox = dialog.vbox
-        if self.check_network_accounting(iface):
+        if self.monitor.check_network_accounting(iface):
             # graph
             graph_vnstat = gtk.Image()
             pixbuf = self.load_graph_from_vnstat(iface, type="summary")
@@ -739,7 +731,7 @@ class MonitorGui:
         frame_accounting = gtk.Frame(_("Traffic accounting"))
         vbox = gtk.VBox()
         frame_accounting.add(vbox)
-        if self.check_network_accounting(iface):
+        if self.monitor.check_network_accounting(iface):
             iface_u, iface_uptime = self.build_value_pair(sizegroup1, _("Connection time:"))
             self.ifaces[iface]["widget_uptime"] = iface_uptime
             vbox.pack_start(iface_u, False, False)

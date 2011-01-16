@@ -213,6 +213,14 @@ class Monitor:
             traceback.print_exc()
         return net
 
+    def check_network_accounting(self, iface):
+        """Checks if network accounting was enabled on interface"""
+        try:
+            os.stat("/var/lib/vnstat/%s" % iface)
+            return True
+        except:
+            return False
+
     def get_traffic(self, iface, net=None):
         """Get traffic information"""
         device_exists=False
