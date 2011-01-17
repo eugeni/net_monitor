@@ -4,7 +4,7 @@
 # Copyright, (C) Eugeni Dodonov <eugeni@mandriva.com>, 2011
 #
 
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QString, pyqtSignature
 from PyKDE4.plasma import Plasma
 from PyKDE4 import plasmascript
 
@@ -15,50 +15,31 @@ try:
 except IOError:
     _ = str
 
-from net_monitor import Monitor
- 
 class NetMonitor(plasmascript.Applet):
     def __init__(self,parent,args=None):
         plasmascript.Applet.__init__(self,parent)
-
-        self.monitor = Monitor()
-        self.ifaces = self.monitor.readnet()
-
-        self.enabled_ifaces = []
-        self.wireless_ifaces = filter(self.monitor.has_wireless, self.ifaces.keys())
-
-        sorted_ifaces = self.ifaces.keys()
-        sorted_ifaces.sort()
-
-        net=self.monitor.readnet()
-
-        for iface in sorted_ifaces:
-            device_exists, data_in, data_out = self.monitor.get_traffic(iface,net)
-            self.ifaces[iface] = {'data_in': 0,
-                              'data_out': 0,
-                              'total_in': 0,
-                              'total_out': 0,
-                              'graph': None,
-                              'histogram': [],
-                              'address': "",
-                              }
-            if self.monitor.has_network_accounting(iface):
-                self.enabled_ifaces.append(iface)
-
-        self.refresh_connections()
-
-    def refresh_connections(self):
-        """Updates connections"""
-        for proto in ["tcp", "udp"]:
-            connections = self.monitor.get_connections(proto=proto)
-            for loc_addr, loc_port, rem_addr, rem_port, status in connections:
-                print "%s - %s - %s - %s - %s - %s" % (proto, loc_addr, loc_port, rem_addr, rem_port, status)
-
 
     def init(self):
         self.setHasConfigurationInterface(False)
         self.resize(125, 125)
         self.setAspectRatioMode(Plasma.Square)
+
+        self.connectToEngine()
+
+    def connectToEngine(self):
+        self.engine = self.dataEngine("net_monitor_data")
+        print "Engine: %s" % self.engine
+        self.sources = self.engine.sources()
+        for source in self.sources:
+            print "Will monitor %s" % source
+            self.engine.connectSource(source, self, 1000)
+
+    @pyqtSignature("dataUpdated(const QString &, const Plasma::DataEngine::Data &)")
+    def dataUpdated(self, sourceName, data):
+        """Got something from data source"""
+        print "Updating device %s" % sourceName
+        for item in ["data_in", "data_out", "total_in", "total_out"]:
+            print "%s %s" % (item, data[QString(item)])
 
     def paintInterface(self, painter, option, rect):
         painter.save()
