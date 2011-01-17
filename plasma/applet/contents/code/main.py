@@ -5,6 +5,7 @@
 #
 
 from PyQt4.QtCore import Qt, QString, pyqtSignature
+from PyQt4.QtGui import QGraphicsLinearLayout
 from PyKDE4.plasma import Plasma
 from PyKDE4 import plasmascript
 
@@ -21,30 +22,41 @@ class NetMonitor(plasmascript.Applet):
 
     def init(self):
         self.setHasConfigurationInterface(False)
-        self.resize(125, 125)
         self.setAspectRatioMode(Plasma.Square)
 
-        self.connectToEngine()
+        self.theme = Plasma.Svg(self)
+        self.theme.setImagePath("widgets/background")
+        self.setBackgroundHints(Plasma.Applet.DefaultBackground)
+
+        self.layout = QGraphicsLinearLayout(Qt.Horizontal, self.applet)
+
+        self.widgets = {}
+        for source in self.connectToEngine():
+            label = Plasma.Label(self.applet)
+            label.setText("%s:" % source)
+            self.layout.addItem(label)
+            self.widgets[str(source)] = label
+        self.applet.setLayout(self.layout)
 
     def connectToEngine(self):
         self.engine = self.dataEngine("net_monitor_data")
-        print "Engine: %s" % self.engine
         self.sources = self.engine.sources()
         for source in self.sources:
-            print "Will monitor %s" % source
             self.engine.connectSource(source, self, 1000)
+        return self.sources
 
     @pyqtSignature("dataUpdated(const QString &, const Plasma::DataEngine::Data &)")
     def dataUpdated(self, sourceName, data):
         """Got something from data source"""
-        print "Updating device %s" % sourceName
-        for item in ["data_in", "data_out", "total_in", "total_out"]:
-            print "%s %s" % (item, data[QString(item)])
+        iface = str(sourceName)
+        if iface not in self.widgets:
+            print "Error: data for %s not available yet" % iface
+            return
+        widget = self.widgets[iface]
+        widget.setText("%s\nIn: %d\nOut: %d" % (sourceName, data[QString("data_in")], data[QString("data_out")]))
 
     def paintInterface(self, painter, option, rect):
         painter.save()
-        painter.setPen(Qt.black)
-        painter.drawText(rect, Qt.AlignVCenter | Qt.AlignHCenter, "Hello net_monitor!")
         painter.restore()
  
 def CreateApplet(parent):
