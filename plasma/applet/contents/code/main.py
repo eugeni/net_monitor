@@ -30,12 +30,14 @@ class NetMonitor(plasmascript.Applet):
 
         self.layout = QGraphicsLinearLayout(Qt.Horizontal, self.applet)
 
+        self.monitoring = {}
         self.widgets = {}
         for source in self.connectToEngine():
             label = Plasma.Label(self.applet)
             label.setText("%s:" % source)
             self.layout.addItem(label)
             self.widgets[str(source)] = label
+            self.monitoring[str(source)] = {"in": 0, "out": 0}
         self.applet.setLayout(self.layout)
 
     def connectToEngine(self):
@@ -53,7 +55,21 @@ class NetMonitor(plasmascript.Applet):
             print "Error: data for %s not available yet" % iface
             return
         widget = self.widgets[iface]
-        widget.setText("%s\nIn: %d\nOut: %d" % (sourceName, data[QString("data_in")], data[QString("data_out")]))
+        data_in = int(data[QString("data_in")])
+        data_out = int(data[QString("data_out")])
+        old_data_in = self.monitoring[iface]["in"]
+        old_data_out = self.monitoring[iface]["out"]
+        if old_data_in == -1:
+            speed_in = 0
+        else:
+            speed_in = data_in - old_data_in
+        if old_data_out == -1:
+            speed_out = 0
+        else:
+            speed_out = data_out - old_data_out
+        self.monitoring[iface]["in"] = data_in
+        self.monitoring[iface]["out"] = data_out
+        widget.setText("%s\n\/: %d\n/\: %d" % (sourceName, speed_in, speed_out))
 
     def paintInterface(self, painter, option, rect):
         painter.save()
